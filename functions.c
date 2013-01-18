@@ -37,6 +37,7 @@ extern u_int32_t dhcp_xid;
 extern u_int32_t bcast_flag;
 extern u_int8_t timeout;
 extern u_int8_t vci_buff[256];
+extern u_int32_t option51_lease_time;
 
 extern struct ethernet_hdr *eth_hg;
 extern struct vlan_hdr *vlan_hg; 
@@ -459,6 +460,21 @@ int build_option50()
     return 0;
 }
 
+/*
+ * Builds DHCP option51 on dhopt_buff - DHCP lease time requested
+ */
+int build_option51()
+{
+    u_int8_t msgtype = DHCP_LEASETIME;
+    u_int8_t msglen = 4;
+    u_int32_t msg = htonl(option51_lease_time); 
+
+    memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
+    memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
+    memcpy((dhopt_buff + dhopt_size + 2), &msg, 4);
+    dhopt_size = dhopt_size + 6; 
+    return 0;
+}
 /*
  * Builds DHCP option54 on dhopt_buff
  */

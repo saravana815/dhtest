@@ -45,6 +45,7 @@ u_int32_t dhcp_xid = 0;
 u_int16_t bcast_flag = 0; /* DHCP broadcast flag */ 
 u_int8_t vci_buff[256] = { 0 }; /* VCI buffer*/
 u_int16_t vci_flag = 0;
+u_int32_t option51_lease_time = 0;
 
 /* Pointers for all layer data structures */
 struct ethernet_hdr *eth_hg = { 0 };
@@ -77,9 +78,10 @@ void print_help(char *cmd)
 {
     fprintf(stdout, "Usage: %s [ options ] -m mac_address\n", cmd);
     fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
+    fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
     fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
     fprintf(stdout, "  -o, --option60-vci\t[ VCI_string ]\t# Vendor Class Idendifier string\n");
-    fprintf(stdout, "  -v, --vlan\t\t[ vlan_id ]\t# VLAN ID. Range(2 - 4094)\n");
+    fprintf(stdout, "  -v, --vlan\t\t[ vlan_id ]\t# VLAN ID. Range(1 - 4094)\n");
     /* fprintf(stdout, "  -x, --dhcp_xid\t[ dhcp_xid ]\n"); */
     fprintf(stdout, "  -t, --tos\t\t[ TOS_value ]\t# IP header TOS value\n");
     fprintf(stdout, "  -i, --interface\t[ interface ]\t# Interface to use. Default eth0\n");
@@ -108,6 +110,7 @@ int main(int argc, char *argv[])
 	{ "vlan", required_argument, 0, 'v' },
 	{ "dhcp_xid", required_argument, 0, 'x' },
 	{ "tos", required_argument, 0, 't' },
+	{ "option51-lease_time", required_argument, 0, 'L' },
 	{ "option50-ip", required_argument, 0, 'I' },
 	{ "option60-vci", required_argument, 0, 'o' },
 	{ "timeout", required_argument, 0, 'T' },
@@ -121,7 +124,7 @@ int main(int argc, char *argv[])
 
     /*getopt routine to get command line arguments*/
     while(get_tmp < argc) {
-	get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrT:I:o:k:",\
+	get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrT:I:o:k:L:",\
 		long_options, &option_index);
 	if(get_cmd == -1 ) {
 	    break;
@@ -148,9 +151,9 @@ int main(int argc, char *argv[])
 		break;
 
 	    case 'v':
-		if(atoi(optarg) <= 1 || atoi(optarg) >= 4095)
+		if(atoi(optarg) < 1 || atoi(optarg) > 4095)
 		{
-		    fprintf(stdout, "VLAN ID is not valid. Range 2 to 4094\n");
+		    fprintf(stdout, "VLAN ID is not valid. Range 1 to 4095\n");
 		    exit(1);
 		}
 		vlan = atoi(optarg);
@@ -181,7 +184,11 @@ int main(int argc, char *argv[])
 		}
 		l3_tos = atoi(optarg);
 		break;
-		
+
+	    case 'L':
+		option51_lease_time = atoi(optarg);
+		break;
+
 	    case 'I':
 		option50_ip = inet_addr(optarg);
 		break;
@@ -260,6 +267,9 @@ int main(int argc, char *argv[])
     if(option50_ip) {
 	build_option50();		/* Option50 - req. IP  */
     }
+    if(option51_lease_time) {
+        build_option51();               /* Option51 - DHCP lease time requested */
+    }
 
     if(vci_flag == 1) {
 	build_option60_vci(); 		/* Option60 - VCI  */
@@ -301,6 +311,9 @@ int main(int argc, char *argv[])
     build_option54();
     if(vci_flag == 1) {
 	build_option60_vci();  
+    }
+    if(option51_lease_time) {
+        build_option51();                       /* Option51 - DHCP lease time requested */
     }
     build_option55();
     build_optioneof();

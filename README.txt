@@ -29,6 +29,7 @@ dhtest version 1.1 supports the following
 
 2. Support of bind timout with -k flag on command line
 
+3. Added DHCP option 51 - Requested lease time from server
 
 Authour: Saravanakumar.G
 Send your comments, enhancements and bugs to saravana815@gmail.com

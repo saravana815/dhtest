@@ -24,6 +24,7 @@ int build_option53(int msg_type);	/* Option53: MSGTYPE. Builds option53*/
 int build_option55();		/* Requested parameters list */
 int build_option54();		/* Builds server identifier on DHCP request */
 int build_option50();		/* Option50: Rqstd IP. Builds option50*/
+int build_option51();		/* Option51: Rqstd lease time. Builds option51*/
 int build_option60_vci();	/* Vendor class identifier */
 int build_optioneof();		/* End of option */
 
