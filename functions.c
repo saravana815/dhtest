@@ -328,7 +328,7 @@ int reset_dhopt_size()
 int set_rand_dhcp_xid()
 {
     if(dhcp_xid == 0) {
-	srand(time(NULL));
+	srand(time(NULL) ^ (getpid() << 16));
 	dhcp_xid = rand() % 0xffffffff;
     }
     return 0;
