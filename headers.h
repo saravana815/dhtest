@@ -5,6 +5,7 @@
 
 #ifndef HEADERS_H
 #include<sys/types.h>
+#include<netinet/in.h>
 #define HEADERS_H
 
 /*
@@ -26,6 +27,8 @@ int build_option54();		/* Builds server identifier on DHCP request */
 int build_option50();		/* Option50: Rqstd IP. Builds option50*/
 int build_option51();		/* Option51: Rqstd lease time. Builds option51*/
 int build_option60_vci();	/* Vendor class identifier */
+int build_option12_hostname(); /* Hostname */
+int build_option81_fqdn(); /* FQDN */
 int build_optioneof();		/* End of option */
 
 int build_dhpacket(int pkt_type);	/* Build DHCP disc, req packets  */
@@ -36,12 +39,13 @@ int check_packet(int pkt_type);	/* Checks the packet for DHCP offer & ack */
 int print_dhinfo(int pkt_type);	/* Prints DHCP offer & ack informations */
 int log_dhinfo();		/* Logs DHCP IP info to log file */
 int get_dhinfo();		/* Reads log file for mac, ip, serv_ip info */
+char *get_ip_str(u_int32_t ip);  /* Convert in_addr to string */
 
 int set_serv_id_opt50();	/* Sets the server_ip and option50 ip */
 /*
  * Libnet defines header sizes for every builder function exported.
  */
- 
+
 #define ETHER_H		0x10	/* Ethernet header: 14 bytes */
 #define ETHER_ADDR_LEN  0x6	/* Ethernet address len: 6 bytes */	
 #define IP_ADDR_LEN	0x4
@@ -61,7 +65,7 @@ int set_serv_id_opt50();	/* Sets the server_ip and option50 ip */
  */
 struct arp_hdr
 {
-        u_int16_t ar_hrd;         /* format of hardware address */
+	u_int16_t ar_hrd;         /* format of hardware address */
 #define ARPHRD_NETROM   0   /* from KA9Q: NET/ROM pseudo */
 #define ARPHRD_ETHER    1   /* Ethernet 10Mbps */
 #define ARPHRD_EETHER   2   /* Experimental Ethernet */
@@ -76,20 +80,20 @@ struct arp_hdr
 #define ARPHRD_ATM      19  /* ATM */
 #define ARPHRD_METRICOM 23  /* Metricom STRIP (new IANA id) */
 #define ARPHRD_IPSEC    31  /* IPsec tunnel */
-    u_int16_t ar_pro;         /* format of protocol address */
-    u_int8_t  ar_hln;         /* length of hardware address */
-    u_int8_t  ar_pln;         /* length of protocol addres */
-    u_int16_t ar_op;          /* operation type */
+	u_int16_t ar_pro;         /* format of protocol address */
+	u_int8_t  ar_hln;         /* length of hardware address */
+	u_int8_t  ar_pln;         /* length of protocol addres */
+	u_int16_t ar_op;          /* operation type */
 #define ARPOP_REQUEST    1  /* req to resolve address */
 #define ARPOP_REPLY      2  /* resp to previous request */
 #define ARPOP_REVREQUEST 3  /* req protocol address given hardware */
 #define ARPOP_REVREPLY   4  /* resp giving protocol address */
 #define ARPOP_INVREQUEST 8  /* req to identify peer */
 #define ARPOP_INVREPLY   9  /* resp identifying peer */
-    u_int8_t sender_mac[ETHER_ADDR_LEN];
-    u_int8_t sender_ip[IP_ADDR_LEN];
-    u_int8_t target_mac[ETHER_ADDR_LEN];
-    u_int8_t target_ip[IP_ADDR_LEN];
+	u_int8_t sender_mac[ETHER_ADDR_LEN];
+	u_int8_t sender_ip[IP_ADDR_LEN];
+	u_int8_t target_mac[ETHER_ADDR_LEN];
+	u_int8_t target_ip[IP_ADDR_LEN];
 };
 
 /*
@@ -98,9 +102,9 @@ struct arp_hdr
  */
 struct ethernet_hdr
 {
-    u_int8_t  ether_dhost[ETHER_ADDR_LEN];/* destination ethernet address */
-    u_int8_t  ether_shost[ETHER_ADDR_LEN];/* source ethernet address */
-    u_int16_t ether_type;                 /* protocol */
+	u_int8_t  ether_dhost[ETHER_ADDR_LEN];/* destination ethernet address */
+	u_int8_t  ether_shost[ETHER_ADDR_LEN];/* source ethernet address */
+	u_int16_t ether_type;                 /* protocol */
 };
 
 /**
@@ -109,14 +113,14 @@ struct ethernet_hdr
  */
 struct vlan_hdr
 {
-    u_int8_t vlan_dhost[ETHER_ADDR_LEN];  /**< destination ethernet address */
-    u_int8_t vlan_shost[ETHER_ADDR_LEN];  /**< source ethernet address */
-    u_int16_t vlan_tpi;                   /**< tag protocol ID */
-    u_int16_t vlan_priority_c_vid;        /**< priority | VLAN ID */
+	u_int8_t vlan_dhost[ETHER_ADDR_LEN];  /**< destination ethernet address */
+	u_int8_t vlan_shost[ETHER_ADDR_LEN];  /**< source ethernet address */
+	u_int16_t vlan_tpi;                   /**< tag protocol ID */
+	u_int16_t vlan_priority_c_vid;        /**< priority | VLAN ID */
 #define VLAN_PRIMASK   0x0007    /**< priority mask */
 #define VLAN_CFIMASK   0x0001    /**< CFI mask */
 #define VLAN_VIDMASK   0x0fff    /**< vid mask */
-    u_int16_t vlan_len;                   /**< length or type (802.3 / Eth 2) */
+	u_int16_t vlan_len;                   /**< length or type (802.3 / Eth 2) */
 };  
 
 /*
@@ -131,20 +135,20 @@ struct vlan_hdr
  */
 struct icmp_hdr
 {
-    u_int8_t icmp_type;       			/* ICMP type */
+	u_int8_t icmp_type;       			/* ICMP type */
 #define     ICMP_ECHOREPLY                  0
 #define     ICMP_ECHO                       8
-    u_int8_t icmp_code;       			/* ICMP code */
-    u_int16_t icmp_sum;   			/* ICMP Checksum */
-    u_int16_t id; 				/* ICMP id */
-    u_int16_t seq;				/* ICMP sequence number */
+	u_int8_t icmp_code;       			/* ICMP code */
+	u_int16_t icmp_sum;   			/* ICMP Checksum */
+	u_int16_t id; 				/* ICMP id */
+	u_int16_t seq;				/* ICMP sequence number */
 };
 
 /*
  * UDP header included from netinet/udp.h
  */
 #include<netinet/udp.h>
- 
+
 
 /*
  *  DHCP header
@@ -153,23 +157,23 @@ struct icmp_hdr
  */
 struct dhcpv4_hdr
 {
-    u_int8_t dhcp_opcode;     /* opcode */
+	u_int8_t dhcp_opcode;     /* opcode */
 #define DHCP_REQUEST 0x1
 #define DHCP_REPLY   0x2
-    u_int8_t dhcp_htype;      /* hardware address type */
-    u_int8_t dhcp_hlen;       /* hardware address length */
-    u_int8_t dhcp_hopcount;   /* used by proxy servers */
-    u_int32_t dhcp_xid;        /* transaction ID */
-    u_int16_t dhcp_secs;      /* number of seconds since trying to bootstrap */
-    u_int16_t dhcp_flags;     /* flags for DHCP, unused for BOOTP */
-    u_int32_t dhcp_cip;        /* client's IP */
-    u_int32_t dhcp_yip;        /* your IP */
-    u_int32_t dhcp_sip;        /* server's IP */
-    u_int32_t dhcp_gip;        /* gateway IP */
-    u_int8_t dhcp_chaddr[16]; /* client hardware address */
-    u_int8_t dhcp_sname[64];  /* server host name */
-    u_int8_t dhcp_file[128];  /* boot file name */
-    u_int32_t dhcp_magic;      /* BOOTP magic header */
+	u_int8_t dhcp_htype;      /* hardware address type */
+	u_int8_t dhcp_hlen;       /* hardware address length */
+	u_int8_t dhcp_hopcount;   /* used by proxy servers */
+	u_int32_t dhcp_xid;        /* transaction ID */
+	u_int16_t dhcp_secs;      /* number of seconds since trying to bootstrap */
+	u_int16_t dhcp_flags;     /* flags for DHCP, unused for BOOTP */
+	u_int32_t dhcp_cip;        /* client's IP */
+	u_int32_t dhcp_yip;        /* your IP */
+	u_int32_t dhcp_sip;        /* server's IP */
+	u_int32_t dhcp_gip;        /* gateway IP */
+	u_int8_t dhcp_chaddr[16]; /* client hardware address */
+	u_int8_t dhcp_sname[64];  /* server host name */
+	u_int8_t dhcp_file[128];  /* boot file name */
+	u_int32_t dhcp_magic;      /* BOOTP magic header */
 #define DHCP_MAGIC                  0x63825363
 #define BOOTP_MIN_LEN        0x12c
 #define DHCP_PAD             0x00
@@ -245,6 +249,7 @@ struct dhcpv4_hdr
 #define DHCP_IRCSERVER       0x4a
 #define DHCP_STSERVER        0x4b
 #define DHCP_STDASERVER      0x4c
+#define DHCP_FQDN            0x51
 #define DHCP_END             0xff
 
 #define DHCP_MSGDISCOVER     0x01
@@ -284,6 +289,20 @@ struct dhcpv4_hdr
 #define ARP_SEND		13
 #define ICMP_SEND		14
 #define LISTEN_TIMOUET	 	15
+
+
+/*
+ * FQDN options flags
+ */
+#define FQDN_N_FLAG   0x08
+#define FQDN_E_FLAG   0x04
+#define FQDN_O_FLAG   0x02
+#define FQDN_S_FLAG   0x01a
+
+/*
+ * Minimum DHCP packet size
+ */
+#define MINIMUM_PACKET_SIZE 300
 
 #endif  /* __HEADERS_H */
 
