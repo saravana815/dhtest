@@ -91,7 +91,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
 	fprintf(stdout, "  -o, --option60-vci\t[ VCI_string ]\t# Vendor Class Idendifier string\n");
-	fprintf(stdout, "  -h, --option12-hostname\t[ hostname_string ]\t# Client hostname string\n");
+	fprintf(stdout, "  -h, --option12-hostname [ hostname_string ] # Client hostname string\n");
 	fprintf(stdout, "  -v, --vlan\t\t[ vlan_id ]\t# VLAN ID. Range(1 - 4094)\n");
 	/* fprintf(stdout, "  -x, --dhcp_xid\t[ dhcp_xid ]\n"); */
 	fprintf(stdout, "  -t, --tos\t\t[ TOS_value ]\t# IP header TOS value\n");
@@ -100,10 +100,10 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -b, --bind-ip\t\t\t\t# Listens on the obtained IP. Supported protocols - ARP and ICMP\n");
 	fprintf(stdout, "  -k, --bind-timeout\t[ timeout ]\t# Listen timout in seconds. Default 3600 seconds\n");
 	fprintf(stdout, "  -f, --bcast_flag\t\t\t# Sets broadcast flag on DHCP discover and request\n");
-	fprintf(stdout, "  -n, --fqdn-server-not-update\t\t\t# Sets FQDN server not update flag\n");
-	fprintf(stdout, "  -s, --fqdn-server-update-a\t\t\t# Sets FQDN server update flag\n");
-	fprintf(stdout, "  -d, --fqdn-domain-name\t\t\t# FQDN domain name to use\n");
-	fprintf(stdout, "  -p, --padding\t\t\t# Add padding to packet to be at least 300 bytes\n");
+	fprintf(stdout, "  -d, --fqdn-domain-name   [ fqdn ]\t# FQDN domain name to use\n");
+	fprintf(stdout, "  -n, --fqdn-server-not-update\t\t# Sets FQDN server not update flag\n");
+	fprintf(stdout, "  -s, --fqdn-server-update-a\t\t# Sets FQDN server update flag\n");
+	fprintf(stdout, "  -p, --padding\t\t\t\t# Add padding to packet to be at least 300 bytes\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
 	fprintf(stdout, "  dhtest version 1.1\n");
 }
