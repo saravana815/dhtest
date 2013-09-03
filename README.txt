@@ -31,6 +31,12 @@ dhtest version 1.1 supports the following
 
 3. Added DHCP option 51 - Requested lease time from server
 
+dhtest version 1.2 supports the following
+-----------------------------------------
+
+1. Added DHCP option 12 - Hostname
+
+2. Added DHCP option 81 - Fqdn
+
 Authour: Saravanakumar.G
 Send your comments, enhancements and bugs to saravana815@gmail.com
-

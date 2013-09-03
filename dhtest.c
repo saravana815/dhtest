@@ -105,7 +105,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -s, --fqdn-server-update-a\t\t# Sets FQDN server update flag\n");
 	fprintf(stdout, "  -p, --padding\t\t\t\t# Add padding to packet to be at least 300 bytes\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
-	fprintf(stdout, "  dhtest version 1.1\n");
+	fprintf(stdout, "  dhtest version 1.2\n");
 }
 
 
