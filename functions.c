@@ -44,6 +44,7 @@ extern u_int8_t hostname_buff[256];
 extern u_int8_t fqdn_buff[256];
 extern u_int32_t option51_lease_time;
 extern u_int32_t port;
+extern u_char *giaddr;
 
 extern struct ethernet_hdr *eth_hg;
 extern struct vlan_hdr *vlan_hg; 
@@ -653,7 +654,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -720,7 +721,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -787,7 +788,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = option50_ip;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
