@@ -45,6 +45,7 @@ extern u_int8_t fqdn_buff[256];
 extern u_int32_t option51_lease_time;
 extern u_int32_t port;
 extern u_char *giaddr;
+extern u_char *server_addr;
 
 extern struct ethernet_hdr *eth_hg;
 extern struct vlan_hdr *vlan_hg; 
@@ -632,7 +633,7 @@ int build_dhpacket(int pkt_type)
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
 		iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr("255.255.255.255");
+		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_disc + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_disc + l2_hdr_size + l3_hdr_size);
@@ -699,7 +700,7 @@ int build_dhpacket(int pkt_type)
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
 		iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr("255.255.255.255");
+		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_request + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_request + l2_hdr_size + l3_hdr_size);

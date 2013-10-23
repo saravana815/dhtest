@@ -57,6 +57,7 @@ u_int16_t fqdn_s = 0;
 u_int32_t option51_lease_time = 0;
 u_int32_t port = 67;
 u_char *giaddr = "0.0.0.0";
+u_char *server_addr = "255.255.255.255";
 
 /* Pointers for all layer data structures */
 struct ethernet_hdr *eth_hg = { 0 };
@@ -108,6 +109,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -p, --padding\t\t\t\t# Add padding to packet to be at least 300 bytes\n");
 	fprintf(stdout, "  -P, --port\t\t[ port ]\t# Use port instead of 67\n");
 	fprintf(stdout, "  -g, --giaddr\t\t[ giaddr ]\t# Use giaddr instead of 0.0.0.0\n");
+	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
 	fprintf(stdout, "  dhtest version 1.2\n");
 }
@@ -144,13 +146,14 @@ int main(int argc, char *argv[])
 		{ "padding", no_argument, 0, 'p'},
 		{ "port", required_argument, 0, 'P'},
 		{ "giaddr", required_argument, 0, 'g'},
+		{ "server", required_argument, 0, 'S'},
 		{ "release", no_argument, 0, 'r'},
 		{ 0, 0, 0, 0 }
 	};
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpT:P:g:I:o:k:L:h:n:s:d:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpT:P:g:S:I:o:k:L:h:n:s:d:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -284,6 +287,10 @@ int main(int argc, char *argv[])
 
 			case 'g':
 				giaddr = optarg;
+				break;
+
+			case 'S':
+				server_addr = optarg;
 				break;
 
 			case 'p':
