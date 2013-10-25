@@ -43,6 +43,9 @@ extern u_int8_t vci_buff[256];
 extern u_int8_t hostname_buff[256];
 extern u_int8_t fqdn_buff[256];
 extern u_int32_t option51_lease_time;
+extern u_int32_t port;
+extern u_char *giaddr;
+extern u_char *server_addr;
 
 extern struct ethernet_hdr *eth_hg;
 extern struct vlan_hdr *vlan_hg; 
@@ -630,12 +633,12 @@ int build_dhpacket(int pkt_type)
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
 		iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr("255.255.255.255");
+		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_disc + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_disc + l2_hdr_size + l3_hdr_size);
-		uh->source = htons(68);
-		uh->dest = htons(67);
+		uh->source = htons(port + 1);
+		uh->dest = htons(port);
 		u_int16_t l4_proto = 17;
 		u_int16_t l4_len = (l4_hdr_size + dhcp_hdr_size + dhopt_size);
 		uh->len = htons(l4_len);
@@ -652,7 +655,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -697,12 +700,12 @@ int build_dhpacket(int pkt_type)
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
 		iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr("255.255.255.255");
+		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_request + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_request + l2_hdr_size + l3_hdr_size);
-		uh->source = htons(68);
-		uh->dest = htons(67);
+		uh->source = htons(port + 1);
+		uh->dest = htons(port);
 		u_int16_t l4_proto = 17;
 		u_int16_t l4_len = (l4_hdr_size + dhcp_hdr_size + dhopt_size);
 		uh->len = htons(l4_len);
@@ -719,7 +722,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -768,8 +771,8 @@ int build_dhpacket(int pkt_type)
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_release + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_release + l2_hdr_size + l3_hdr_size);
-		uh->source = htons(68);
-		uh->dest = htons(67);
+		uh->source = htons(port + 1);
+		uh->dest = htons(port);
 		u_int16_t l4_proto = 17;
 		u_int16_t l4_len = (l4_hdr_size + dhcp_hdr_size + dhopt_size);
 		uh->len = htons(l4_len);
@@ -786,7 +789,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = option50_ip;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = 0;
+		dhpointer->dhcp_gip = inet_addr(giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -888,7 +891,7 @@ int check_packet(int pkt_type)
 {
 	if(pkt_type == DHCP_MSGOFFER && vlan != 0) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
-		if(ntohs(vlan_hg->vlan_priority_c_vid) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(67) && uh_g->dest == htons(68)) {
+		if(ntohs(vlan_hg->vlan_priority_c_vid) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_OFFR_RCVD;
 			} else {
@@ -899,7 +902,7 @@ int check_packet(int pkt_type)
 		}
 	} else if (pkt_type == DHCP_MSGACK && vlan != 0){
 		map_all_layer_ptr(DHCP_MSGACK);
-		if(ntohs(vlan_hg->vlan_priority_c_vid) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(67) && uh_g->dest == htons(68)) {
+		if(ntohs(vlan_hg->vlan_priority_c_vid) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_ACK_RCVD;
 			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid){
@@ -913,7 +916,7 @@ int check_packet(int pkt_type)
 		}
 	} else if (pkt_type == DHCP_MSGOFFER) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
-		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(67) && uh_g->dest == htons(68)) {
+		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_OFFR_RCVD;
 			} else {
@@ -925,7 +928,7 @@ int check_packet(int pkt_type)
 
 	} else if (pkt_type == DHCP_MSGACK) {
 		map_all_layer_ptr(DHCP_MSGACK);
-		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(67) && uh_g->dest == htons(68)) {
+		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_ACK_RCVD;
 			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
