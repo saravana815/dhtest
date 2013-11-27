@@ -56,6 +56,8 @@ u_int16_t fqdn_n = 0;
 u_int16_t fqdn_s = 0;
 u_int32_t option51_lease_time = 0;
 u_int32_t port = 67;
+u_int8_t unicast_flag = 0;
+u_int8_t nagios_flag = 0;
 u_char *giaddr = "0.0.0.0";
 u_char *server_addr = "255.255.255.255";
 
@@ -78,6 +80,7 @@ time_t time_now, time_last;
 struct arp_hdr *arp_hg = { 0 };
 struct icmp_hdr *icmp_hg = { 0 };
 
+u_int32_t unicast_ip_address = 0;
 u_int32_t ip_address;
 u_char ip_listen_flag = 0;
 struct timeval tval_listen = { 3600, 0 };
@@ -89,7 +92,8 @@ u_int16_t icmp_len = 0;
 /* Help routine for the command line interface */
 void print_help(char *cmd)
 {
-	fprintf(stdout, "Usage: %s [ options ] -m mac_address\n", cmd);
+	fprintf(stdout, "Usage: %s [ options ]\n", cmd);
+	fprintf(stdout, "  -m mac_address\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
@@ -109,9 +113,11 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -p, --padding\t\t\t\t# Add padding to packet to be at least 300 bytes\n");
 	fprintf(stdout, "  -P, --port\t\t[ port ]\t# Use port instead of 67\n");
 	fprintf(stdout, "  -g, --giaddr\t\t[ giaddr ]\t# Use giaddr instead of 0.0.0.0\n");
+	fprintf(stdout, "  -u<ip>, --unicast=<ip>\t\t# Unicast request, IP is optional. If not specified, the interface address will be used. \n");
+	fprintf(stdout, "  -a, --nagios\t\t# Nagios output format. \n");
 	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
-	fprintf(stdout, "  dhtest version 1.2\n");
+	fprintf(stdout, "  dhtest version 1.3\n");
 }
 
 
@@ -121,7 +127,7 @@ int main(int argc, char *argv[])
 
 	if(argc < 3) {
 		print_help(argv[0]);
-		exit(1);
+		exit(2);
 	}
 
 	int option_index = 0;
@@ -146,6 +152,8 @@ int main(int argc, char *argv[])
 		{ "padding", no_argument, 0, 'p'},
 		{ "port", required_argument, 0, 'P'},
 		{ "giaddr", required_argument, 0, 'g'},
+		{ "unicast", optional_argument, 0, 'u'},
+		{ "nagios", no_argument, 0, 'a'},
 		{ "server", required_argument, 0, 'S'},
 		{ "release", no_argument, 0, 'r'},
 		{ 0, 0, 0, 0 }
@@ -153,7 +161,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpT:P:g:S:I:o:k:L:h:n:s:d:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansu::T:P:g:S:I:o:k:L:h:d:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -165,7 +173,7 @@ int main(int argc, char *argv[])
 
 					if(strlen(optarg) > 18) {
 						fprintf(stdout, "Invalid mac address\n");
-						exit(1);
+						exit(2);
 					}
 					strcpy(dhmac_fname, optarg);
 					sscanf((char *)optarg, "%2X:%2X:%2X:%2X:%2X:%2X",
@@ -181,7 +189,7 @@ int main(int argc, char *argv[])
 				iface = if_nametoindex(optarg);
 				if(iface == 0) {
 					fprintf(stdout, "Interface doesnot exist\n");
-					exit(1);
+					exit(2);
 				}
 				strncpy(iface_name, optarg, 29);
 				break;
@@ -190,7 +198,7 @@ int main(int argc, char *argv[])
 				if(atoi(optarg) < 1 || atoi(optarg) > 4095)
 				{
 					fprintf(stdout, "VLAN ID is not valid. Range 1 to 4095\n");
-					exit(1);
+					exit(2);
 				}
 				vlan = atoi(optarg);
 				l2_hdr_size = 18;
@@ -221,7 +229,7 @@ int main(int argc, char *argv[])
 			case 't':
 				if(atoi(optarg) >= 256 || atoi(optarg) < 0) {
 					fprintf(stdout, "Invalid TOS value\n");
-					exit(1);
+					exit(2);
 				}
 				l3_tos = atoi(optarg);
 				break;
@@ -237,7 +245,7 @@ int main(int argc, char *argv[])
 			case 'o':
 				if(strlen(optarg) > 256) {
 					fprintf(stdout, "VCI string size should be less than 256\n");
-					exit(1);
+					exit(2);
 				}
 				vci_flag = 1;
 				memcpy(vci_buff, optarg, sizeof(vci_buff));
@@ -246,7 +254,7 @@ int main(int argc, char *argv[])
 			case 'h':
 				if(strlen(optarg) > 256) {
 					fprintf(stdout, "Hostname string size should be less than 256\n");
-					exit(1);
+					exit(2);
 				}
 				hostname_flag = 1;
 				memcpy(hostname_buff, optarg, sizeof(hostname_buff));
@@ -255,7 +263,7 @@ int main(int argc, char *argv[])
 			case 'd':
 				if(strlen(optarg) > 256) {
 					fprintf(stdout, "FQDN domain name string size should be less than 256\n");
-					exit(1);
+					exit(2);
 				}
 				fqdn_flag = 1;
 				memcpy(fqdn_buff, optarg, sizeof(fqdn_buff));
@@ -272,7 +280,7 @@ int main(int argc, char *argv[])
 			case 'T':
 				if(atoi(optarg) < 5 || atoi(optarg) > 3600) {
 					fprintf(stdout, "Invalid timout value. Range 5 to 3600\n");
-					exit(1);
+					exit(2);
 				}
 				timeout = atoi(optarg);
 				break;
@@ -280,7 +288,7 @@ int main(int argc, char *argv[])
 			case 'P':
 				if(atoi(optarg) <=0 || atoi(optarg) > 65535) {
 					fprintf(stdout, "Invalid portt value. Range 1 to 65535\n");
-					exit(1);
+					exit(2);
 				}
 				port = atoi(optarg);
 				break;
@@ -305,24 +313,48 @@ int main(int argc, char *argv[])
 				verbose = 1;
 				break;
 
+			case 'u':
+				if (optarg) {
+					struct in_addr out;
+
+					if (!inet_aton(optarg, &out)) {
+						fprintf(stdout, "Invalid unicast IP address.");
+						exit(2);
+					}
+					unicast_ip_address = out.s_addr;
+				}
+				unicast_flag = 1;
+				break;
+
+			case 'a':
+				nagios_flag = 1;
+				break;
+
 			default:
-				exit(1);
+				exit(2);
 		}
 		get_tmp++;
 	}	
 
 	if(!dhmac_flag) {
 		print_help(argv[0]);
-		exit(1);
+		exit(2);
 	}
 	/* Opens the PF_PACKET socket */
 	if(open_socket() < 0) {
-		fprintf(stdout, "Socket error\n");
-		exit(1);
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Socket error.");
+		else
+			fprintf(stdout, "Socket error\n");
+		exit(2);
 	}
 
 	/* Sets the promiscuous mode */
 	set_promisc();
+
+	if (unicast_flag && !unicast_ip_address) {
+		unicast_ip_address = get_interface_address();
+	}
 
 	/* Sets a random DHCP xid */
 	set_rand_dhcp_xid(); 
@@ -334,9 +366,13 @@ int main(int argc, char *argv[])
 	 */
 	if(dhcp_release_flag) {
 		if(get_dhinfo() == ERR_FILE_OPEN) {
-			fprintf(stdout, "Error on opening DHCP info file\n");
-			fprintf(stdout, "Release the DHCP IP after acquiring\n");
-			exit(1);
+			if (nagios_flag) {
+				fprintf(stdout, "CRITICAL: Error on opening DHCP info file.");
+			} else {
+				fprintf(stdout, "Error on opening DHCP info file\n");
+				fprintf(stdout, "Release the DHCP IP after acquiring\n");
+			}
+			exit(2);
 		}
 		build_option53(DHCP_MSGRELEASE); /* Option53 DHCP release */
 		if(hostname_flag) {
@@ -390,15 +426,19 @@ int main(int argc, char *argv[])
 		if(timeout) {
 			time_now = time(NULL);
 			if((time_now - time_last) > timeout) {
+				if (nagios_flag)
+					fprintf(stdout, "CRITICAL: Timeout reached: DISCOVER.");
 				close_socket();
-				exit(1);
+				exit(2);
 			}
 		}
 		if(dhcp_offer_state == DHCP_OFFR_RCVD) {
-			fprintf(stdout, "DHCP offer received\t - ");
+			if (!nagios_flag)
+				fprintf(stdout, "DHCP offer received\t - ");
 			set_serv_id_opt50();
-			fprintf(stdout, "Offered IP : %s\n", get_ip_str(dhcph_g->dhcp_yip));
-			if(verbose) { 
+			if (!nagios_flag)
+  				fprintf(stdout, "Offered IP : %s\n", get_ip_str(dhcph_g->dhcp_yip));
+			if(!nagios_flag && verbose) { 
 				print_dhinfo(DHCP_MSGOFFER);
 			}
 		}
@@ -432,29 +472,38 @@ int main(int argc, char *argv[])
 		if(timeout) {
 			time_now = time(NULL);
 			if((time_now - time_last) > timeout) {
-				fprintf(stdout, "Timeout reached. Exiting\n");
+				if (nagios_flag)
+					fprintf(stdout, "CRITICAL: Timeout reached: REQUEST.");
+				else
+					fprintf(stdout, "Timeout reached. Exiting\n");
 				close_socket();
 				exit(1);
 			}
 		}
 
 		if(dhcp_ack_state == DHCP_ACK_RCVD) {
-			fprintf(stdout, "DHCP ack received\t - ");
-			fprintf(stdout, "Acquired IP: %s\n", get_ip_str(dhcph_g->dhcp_yip));
+			if (nagios_flag) {
+				fprintf(stdout, "OK: Acquired IP: %s", get_ip_str(dhcph_g->dhcp_yip));
+			} else {
+				fprintf(stdout, "DHCP ack received\t - ");
+				fprintf(stdout, "Acquired IP: %s\n", get_ip_str(dhcph_g->dhcp_yip));
+			}
 
 			/* Logs DHCP IP details to log file. This file is used for DHCP release */
 			log_dhinfo(); 
-			if(verbose) {
+			if(!nagios_flag && verbose) {
 				print_dhinfo(DHCP_MSGACK);
 			}
 		} else if (dhcp_ack_state == DHCP_NAK_RCVD) {
-			fprintf(stdout, "DHCP nack received\t - ");
-			fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			if (!nagios_flag) {
+				fprintf(stdout, "DHCP nack received\t - ");
+				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			}
 		}
 	}
 	/* If IP listen flag is enabled, Listen on obtained for ARP, ICMP protocols  */
-	if(ip_listen_flag) {
+	if(!nagios_flag && ip_listen_flag) {
 		fprintf(stdout, "\nListening on %s for ARP and ICMP protocols\n", iface_name);
 		fprintf(stdout, "IP address: %s, Listen timeout: %d seconds\n", get_ip_str(htonl(ip_address)), listen_timeout);
 		int arp_icmp_rcv_state = 0;

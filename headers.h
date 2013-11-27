@@ -40,6 +40,7 @@ int print_dhinfo(int pkt_type);	/* Prints DHCP offer & ack informations */
 int log_dhinfo();		/* Logs DHCP IP info to log file */
 int get_dhinfo();		/* Reads log file for mac, ip, serv_ip info */
 char *get_ip_str(u_int32_t ip);  /* Convert in_addr to string */
+u_int32_t get_interface_address(); /* Return the IP address of the interface. */
 
 int set_serv_id_opt50();	/* Sets the server_ip and option50 ip */
 /*

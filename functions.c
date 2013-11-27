@@ -44,6 +44,8 @@ extern u_int8_t hostname_buff[256];
 extern u_int8_t fqdn_buff[256];
 extern u_int32_t option51_lease_time;
 extern u_int32_t port;
+extern u_int8_t unicast_flag;
+extern u_int8_t nagios_flag;
 extern u_char *giaddr;
 extern u_char *server_addr;
 
@@ -66,6 +68,7 @@ extern char ip_str[128];
 extern u_int32_t server_id, option50_ip;
 extern u_int8_t dhcp_release_flag;
 
+extern u_int32_t unicast_ip_address;
 extern u_int32_t ip_address;
 extern ip_listen_flag;
 extern u_char arp_icmp_packet[1514];
@@ -122,8 +125,11 @@ int set_promisc()
 	ifr.ifr_flags = (IFF_PROMISC | IFF_UP);
 	status = ioctl(sock_packet, SIOCSIFFLAGS, &ifr);
 	if(status < 0) {
-		perror("Error on setting promisc");
-		exit(1);
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Error setting promisc.");
+		else
+			perror("Error on setting promisc");
+		exit(2);
 	}
 }
 
@@ -135,10 +141,38 @@ int clear_promisc()
 	ifr.ifr_flags = IFF_UP;
 	status = ioctl(sock_packet, SIOCSIFFLAGS, &ifr);
 	if(status < 0) {
-		perror("Error on disabling promisc");
-		exit(1);
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Error on disabling promisc");
+		else
+			perror("Error on disabling promisc");
+		exit(2);
 	}
 	return 0;
+}
+
+/*
+ * Get address from the interface
+ */
+u_int32_t get_interface_address()
+{
+	int status;
+	struct ifreq ifr;
+
+	if(!strlen(iface_name)) {
+		strcpy(iface_name, "eth0");
+	}
+	strcpy(ifr.ifr_name, iface_name);
+	ifr.ifr_addr.sa_family = AF_INET;
+	status = ioctl(sock_packet, SIOCGIFADDR, &ifr);
+
+	if(status < 0) {
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Error getting interface address.");
+		else
+			perror("Error getting interface address.");
+		exit(2);
+	}
+	return ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
 }
 
 /*
@@ -186,23 +220,32 @@ int send_packet(int pkt_type)
 	}
 
 	if(ret < 0) {
-		perror("Paket send failure");
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Packet send failure.");
+		else
+			perror("Packet send failure");
 		close(sock_packet);
-		exit(1);
+		exit(2);
 		return PACK_SEND_ERR;
 	} else {
 		if(pkt_type == DHCP_MSGDISCOVER) {
-			fprintf(stdout, "DHCP discover sent\t - ");
-			fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			if (!nagios_flag) {
+				fprintf(stdout, "DHCP discover sent\t - ");
+				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
+			}
 		} else if (pkt_type == DHCP_MSGREQUEST) {
-			fprintf(stdout, "DHCP request sent\t - ");
-			fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			if (!nagios_flag) {
+				fprintf(stdout, "DHCP request sent\t - ");
+				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			}
 		} else if (pkt_type == DHCP_MSGRELEASE) { 
-			fprintf(stdout, "DHCP release sent\t - ");
-			fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
+			if (!nagios_flag) {
+				fprintf(stdout, "DHCP release sent\t - ");
+				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			}
 		}
 	}
 	return 0;
@@ -632,7 +675,10 @@ int build_dhpacket(int pkt_type)
 		iph->ttl = 64;
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
-		iph->saddr = inet_addr("0.0.0.0");
+		if (unicast_flag)
+			iph->saddr = unicast_ip_address;
+		else
+			iph->saddr = inet_addr("0.0.0.0");
 		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_disc + l2_hdr_size), iph->ihl << 1);
 
@@ -652,7 +698,10 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
 		dhpointer->dhcp_secs = 0;
 		dhpointer->dhcp_flags = bcast_flag;
-		dhpointer->dhcp_cip = 0;
+		if (unicast_flag)
+			dhpointer->dhcp_cip = unicast_ip_address;
+		else
+			dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
 		dhpointer->dhcp_gip = inet_addr(giaddr);
@@ -699,7 +748,10 @@ int build_dhpacket(int pkt_type)
 		iph->ttl = 64;
 		iph->protocol = 17;
 		iph->check = 0; // Filled later;
-		iph->saddr = inet_addr("0.0.0.0");
+		if (unicast_flag)
+			iph->saddr = unicast_ip_address;
+		else
+			iph->saddr = inet_addr("0.0.0.0");
 		iph->daddr = inet_addr(server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_request + l2_hdr_size), iph->ihl << 1);
 
@@ -719,7 +771,10 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
 		dhpointer->dhcp_secs = 0;
 		dhpointer->dhcp_flags = bcast_flag;
-		dhpointer->dhcp_cip = 0;
+		if (unicast_flag)
+			dhpointer->dhcp_cip = unicast_ip_address;
+		else
+			dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
 		dhpointer->dhcp_gip = inet_addr(giaddr);
@@ -1123,8 +1178,11 @@ int log_dhinfo()
 
 	dh_file = fopen(dhmac_fname, "w");
 	if(dh_file == NULL) {
-		perror("Error on opening file");
-		exit(1);
+		if (nagios_flag)
+			fprintf(stdout, "CRITICAL: Error on opening file.");
+		else
+			perror("Error on opening file.");
+		exit(2);
 	}
 	if(!vlan) {
 		fprintf(dh_file, "Client_mac: %s\n", dhmac_fname);
