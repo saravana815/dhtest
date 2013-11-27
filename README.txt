@@ -1,4 +1,3 @@
-
 DHTEST README
 -------------
 
@@ -37,6 +36,15 @@ dhtest version 1.2 supports the following
 1. Added DHCP option 12 - Hostname
 
 2. Added DHCP option 81 - Fqdn
+
+dhtest version 1.3 supports the following
+----------------------------------------
+
+1. Option to send in unicast mode.
+
+2. Option to output for nagios.
+
+3. Option to change port, patch by Alan Dekok.
 
 Authour: Saravanakumar.G
 Send your comments, enhancements and bugs to saravana815@gmail.com
