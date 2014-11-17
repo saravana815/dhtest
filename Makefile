@@ -1,7 +1,7 @@
 # Makefile to generate dhtest
 
 CC=gcc
-# CFLAGS=-Wall
+#CFLAGS=-Wall -g
 
 dhtest: dhtest.o functions.o 
 	$(CC) dhtest.o functions.o -o dhtest

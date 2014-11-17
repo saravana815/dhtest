@@ -4,6 +4,8 @@
 #include<unistd.h>
 #include<fcntl.h>		/* To set non blocking on socket  */
 #include<sys/socket.h>		/* Generic socket calls */
+#include<netinet/in.h>
+#include<arpa/inet.h>
 #include<sys/ioctl.h>
 #include<time.h>
 #include<sys/types.h>
@@ -70,7 +72,7 @@ extern u_int8_t dhcp_release_flag;
 
 extern u_int32_t unicast_ip_address;
 extern u_int32_t ip_address;
-extern ip_listen_flag;
+extern u_char ip_listen_flag;
 extern u_char arp_icmp_packet[1514];
 extern u_char arp_icmp_reply[1514];
 extern u_int16_t icmp_len;
@@ -118,7 +120,7 @@ int set_promisc()
 {
 	int status;
 	struct ifreq ifr;
-	if(!strlen(iface_name)) {
+	if(!strlen((const char *) iface_name)) {
 		strcpy(iface_name, "eth0");
 	}
 	strcpy(ifr.ifr_name, iface_name);
@@ -131,6 +133,7 @@ int set_promisc()
 			perror("Error on setting promisc");
 		exit(2);
 	}
+        return 0;
 }
 
 int clear_promisc() 
@@ -158,7 +161,7 @@ u_int32_t get_interface_address()
 	int status;
 	struct ifreq ifr;
 
-	if(!strlen(iface_name)) {
+	if(!strlen((const char *) iface_name)) {
 		strcpy(iface_name, "eth0");
 	}
 	strcpy(ifr.ifr_name, iface_name);
@@ -256,7 +259,6 @@ int send_packet(int pkt_type)
  * Extended to recv ARP and ICMP packets
  */
 int recv_packet(int pkt_type) 
-
 {
 	int ret, sock_len, retval, chk_pkt_state, tmp = 0;
 	fd_set read_fd;
@@ -280,7 +282,7 @@ int recv_packet(int pkt_type)
 						sizeof(dhcp_packet_offer),\
 						0,\
 						(struct sockaddr *)&ll,
-						&sock_len);
+						(socklen_t *) &sock_len);
 			}
 			if(ret >= 60) {
 				chk_pkt_state = check_packet(DHCP_MSGOFFER);
@@ -306,7 +308,7 @@ int recv_packet(int pkt_type)
 						sizeof(dhcp_packet_ack),\
 						0,\
 						(struct sockaddr *)&ll,
-						&sock_len);
+                                                (socklen_t *) &sock_len);
 			}
 			if(ret >= 60) {
 				chk_pkt_state = check_packet(DHCP_MSGACK);
@@ -334,7 +336,7 @@ int recv_packet(int pkt_type)
 						sizeof(arp_icmp_packet),\
 						0,\
 						(struct sockaddr *)&ll,
-						&sock_len);
+                                                (socklen_t *) &sock_len);
 			}
 			if(ret >= 60) {
 				chk_pkt_state = check_packet(ARP_ICMP_RCV);
@@ -471,8 +473,8 @@ int build_option53(int msg_type)
 		u_int8_t msg = DHCP_MSGDISCOVER;
 
 		memcpy(dhopt_buff, &msgtype, 1);
-		strncpy((dhopt_buff + 1), &msglen, 1);
-		strncpy((dhopt_buff + 2), &msg, 1);
+                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
+                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
 		dhopt_size = dhopt_size + 3; 
 	} else if(msg_type == DHCP_MSGREQUEST) {
 		u_int8_t msgtype = DHCP_MESSAGETYPE;
@@ -480,8 +482,8 @@ int build_option53(int msg_type)
 		u_int8_t msg = DHCP_MSGREQUEST;
 
 		memcpy(dhopt_buff, &msgtype, 1);
-		strncpy((dhopt_buff + 1), &msglen, 1);
-		strncpy((dhopt_buff + 2), &msg, 1);
+                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
+                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
 		dhopt_size = dhopt_size + 3; 
 	} else if(msg_type == DHCP_MSGRELEASE) {
 		u_int8_t msgtype = DHCP_MESSAGETYPE;
@@ -489,8 +491,8 @@ int build_option53(int msg_type)
 		u_int8_t msg = DHCP_MSGRELEASE;
 
 		memcpy(dhopt_buff, &msgtype, 1);
-		strncpy((dhopt_buff + 1), &msglen, 1);
-		strncpy((dhopt_buff + 2), &msg, 1);
+                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
+                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
 		dhopt_size = dhopt_size + 3; 
 	}
 	return 0;
@@ -540,6 +542,7 @@ int build_option54()
 	memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
 	memcpy((dhopt_buff + dhopt_size + 2), &msg, 4);
 	dhopt_size = dhopt_size + 6; 
+        return 0;
 }
 
 /*
@@ -569,13 +572,13 @@ int build_option55()
 int build_option60_vci()
 {
 	u_int32_t msgtype = DHCP_CLASSSID;
-	u_int32_t msglen = strlen(vci_buff);
+	u_int32_t msglen = strlen((const char *) vci_buff);
 
 	memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
 	memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
-	memcpy((dhopt_buff + dhopt_size + 2), vci_buff, strlen(vci_buff));
+	memcpy((dhopt_buff + dhopt_size + 2), vci_buff, strlen((const char *) vci_buff));
 
-	dhopt_size = dhopt_size + 2 + strlen(vci_buff);
+	dhopt_size = dhopt_size + 2 + strlen((const char *) vci_buff);
 	return 0;
 }
 
@@ -585,13 +588,13 @@ int build_option60_vci()
 int build_option12_hostname()
 {
 	u_int32_t msgtype = DHCP_HOSTNAME;
-	u_int32_t msglen = strlen(hostname_buff);
+	u_int32_t msglen = strlen((const char *) hostname_buff);
 
 	memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
 	memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
-	memcpy((dhopt_buff + dhopt_size + 2), hostname_buff, strlen(hostname_buff));
+	memcpy((dhopt_buff + dhopt_size + 2), hostname_buff, strlen((const char *) hostname_buff));
 
-	dhopt_size = dhopt_size + 2 + strlen(hostname_buff);
+	dhopt_size = dhopt_size + 2 + strlen((const char *) hostname_buff);
 	return 0;
 }
 
@@ -605,7 +608,7 @@ int build_option81_fqdn()
 	u_int8_t flags = 0;
 	u_int8_t rcode1 = 0;
 	u_int8_t rcode2 = 0;
-	u_int32_t msglen = strlen(fqdn_buff) + 3;
+	u_int32_t msglen = strlen((const char *) fqdn_buff) + 3;
 
 	if (fqdn_n)
 		flags |= FQDN_N_FLAG;
@@ -617,7 +620,7 @@ int build_option81_fqdn()
 	memcpy((dhopt_buff + dhopt_size + 2), &flags, 1);
 	memcpy((dhopt_buff + dhopt_size + 3), &rcode1, 1);
 	memcpy((dhopt_buff + dhopt_size + 4), &rcode2, 1);
-	memcpy((dhopt_buff + dhopt_size + 5), fqdn_buff, strlen(fqdn_buff));
+	memcpy((dhopt_buff + dhopt_size + 5), fqdn_buff, strlen((const char *) fqdn_buff));
 
 	dhopt_size = dhopt_size + 2 + msglen;
 	return 0;
@@ -679,7 +682,7 @@ int build_dhpacket(int pkt_type)
 			iph->saddr = unicast_ip_address;
 		else
 			iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr(server_addr);
+		iph->daddr = inet_addr((const char *) server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_disc + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_disc + l2_hdr_size + l3_hdr_size);
@@ -704,7 +707,7 @@ int build_dhpacket(int pkt_type)
 			dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = inet_addr(giaddr);
+		dhpointer->dhcp_gip = inet_addr((const char *) giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -752,7 +755,7 @@ int build_dhpacket(int pkt_type)
 			iph->saddr = unicast_ip_address;
 		else
 			iph->saddr = inet_addr("0.0.0.0");
-		iph->daddr = inet_addr(server_addr);
+		iph->daddr = inet_addr((const char *) server_addr);
 		iph->check = ipchksum((u_int16_t *)(dhcp_packet_request + l2_hdr_size), iph->ihl << 1);
 
 		struct udphdr *uh = (struct udphdr *) (dhcp_packet_request + l2_hdr_size + l3_hdr_size);
@@ -777,7 +780,7 @@ int build_dhpacket(int pkt_type)
 			dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = inet_addr(giaddr);
+		dhpointer->dhcp_gip = inet_addr((const char *) giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -844,7 +847,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_cip = option50_ip;
 		dhpointer->dhcp_yip = 0;
 		dhpointer->dhcp_sip = 0;
-		dhpointer->dhcp_gip = inet_addr(giaddr);
+		dhpointer->dhcp_gip = inet_addr((const char *) giaddr);
 		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
 		/*dhpointer->dhcp_sname 
 		  dhpointer->dhcp_file*/
@@ -857,6 +860,7 @@ int build_dhpacket(int pkt_type)
 		/* UDP checksum is done here */
 		uh->check = l4_sum((u_int16_t *) (dhcp_packet_release + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len)); 
 	}
+        return 0;
 }
 
 /*
@@ -1225,12 +1229,12 @@ int get_dhinfo()
 	u_char aux_dmac[ETHER_ADDR_LEN];
 	char mac_tmp[20], acq_ip_tmp[20], serv_id_tmp[20], dmac_tmp[20], ip_listen_tmp[10];
 	pid_t dh_pid;
-	dh_file = fopen(dhmac_fname, "r");
+	dh_file = fopen(dhmac_fname, "w");
 	if(dh_file == NULL) {
 		return ERR_FILE_OPEN;
 	}
 	fscanf(dh_file, "Client_mac: %s\nAcquired_ip: %s\nServer_id: %s\n\
-			Host_mac: %2X:%2X:%2X:%2X:%2X:%2X\nIP_listen: %s Pid: %d\n", mac_tmp, acq_ip_tmp, serv_id_tmp, \
+			Host_mac: %2X:%2X:%2X:%2X:%2X:%2X\nIP_listen: %s Pid: %d", mac_tmp, acq_ip_tmp, serv_id_tmp, \
 			(u_int32_t *) &aux_dmac[0], (u_int32_t *) &aux_dmac[1], (u_int32_t *) &aux_dmac[2],
 			(u_int32_t *) &aux_dmac[3], (u_int32_t *) &aux_dmac[4], (u_int32_t *) &aux_dmac[5],
 			ip_listen_tmp, &dh_pid);

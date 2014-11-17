@@ -9,6 +9,8 @@
 #include<sys/types.h>
 #include<unistd.h>
 #include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
 #include<net/if.h>
 #include<linux/if_packet.h>
 #include<getopt.h>
@@ -113,8 +115,8 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -p, --padding\t\t\t\t# Add padding to packet to be at least 300 bytes\n");
 	fprintf(stdout, "  -P, --port\t\t[ port ]\t# Use port instead of 67\n");
 	fprintf(stdout, "  -g, --giaddr\t\t[ giaddr ]\t# Use giaddr instead of 0.0.0.0\n");
-	fprintf(stdout, "  -u<ip>, --unicast=<ip>\t\t# Unicast request, IP is optional. If not specified, the interface address will be used. \n");
-	fprintf(stdout, "  -a, --nagios\t\t# Nagios output format. \n");
+	fprintf(stdout, "  -u, --unicast\t\t[ ip ]\t\t# Unicast request, IP is optional. If not specified, the interface address will be used. \n");
+	fprintf(stdout, "  -a, --nagios\t\t\t\t# Nagios output format. \n");
 	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
 	fprintf(stdout, "  dhtest version 1.3\n");
