@@ -51,6 +51,9 @@ extern u_int8_t nagios_flag;
 extern u_char *giaddr;
 extern u_char *server_addr;
 
+extern u_int8_t no_custom_dhcp_options;
+extern struct custom_dhcp_option_hdr custom_dhcp_options[255];
+
 extern struct ethernet_hdr *eth_hg;
 extern struct vlan_hdr *vlan_hg; 
 extern struct iphdr *iph_g;
@@ -357,7 +360,7 @@ int recv_packet(int pkt_type)
 int print_buff(u_int8_t *buff, int size)
 {
 	int tmp;
-	fprintf(stdout, "\n---------Buffer data-------\n");
+	fprintf(stdout, "\n---------Buffer data---------\n");
 	for(tmp = 0; tmp < size; tmp++) {
 		fprintf(stdout, "%02X ", buff[tmp]);
 		if((tmp % 16) == 0 && tmp != 0) {
@@ -551,18 +554,19 @@ int build_option54()
 int build_option55() 
 {
 	u_int32_t msgtype = DHCP_PARAMREQUEST;
-	u_int32_t msglen = 4;
-	u_int8_t msg[4] = { 0 };
+	u_int32_t msglen = 5;
+	u_int8_t msg[5] = { 0 };
 	msg[0] = DHCP_SUBNETMASK;
-	msg[1] = DHCP_ROUTER;
-	msg[2] = DHCP_DOMAINNAME;
-	msg[3] = DHCP_DNS;
-	/* msg[4] = DHCP_LOGSERV; */
+        msg[1] = DHCP_BROADCASTADDR;
+	msg[2] = DHCP_ROUTER;
+	msg[3] = DHCP_DOMAINNAME;
+	msg[4] = DHCP_DNS;
+	/* msg[5] = DHCP_LOGSERV; */
 
 	memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
 	memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
-	memcpy((dhopt_buff + dhopt_size + 2), msg, 4);
-	dhopt_size = dhopt_size + 6; 
+	memcpy((dhopt_buff + dhopt_size + 2), msg, 5);
+	dhopt_size = dhopt_size + 7; 
 	return 0;
 }
 
@@ -624,6 +628,36 @@ int build_option81_fqdn()
 
 	dhopt_size = dhopt_size + 2 + msglen;
 	return 0;
+}
+
+
+/*
+ * Builds custom DHCP options passed from command line
+ */
+int build_custom_dhcp_options()
+{
+        int option_index;
+        for(option_index = 0; option_index < no_custom_dhcp_options; option_index++) {
+
+            u_int8_t msgtype = custom_dhcp_options[option_index].option_no;
+            u_int8_t msglen = custom_dhcp_options[option_index].option_len;
+            u_int8_t option_type = custom_dhcp_options[option_index].option_type;
+
+            memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
+            memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
+            if(option_type == CUST_DHCP_OPTION_IP) {
+                memcpy((dhopt_buff + dhopt_size + 2), &custom_dhcp_options[option_index].option_value_ip, msglen);
+            } else if(option_type == CUST_DHCP_OPTION_NUMBER) {
+                memcpy((dhopt_buff + dhopt_size + 2), &custom_dhcp_options[option_index].option_value_num, msglen);
+            } else {
+                memcpy((dhopt_buff + dhopt_size + 2), custom_dhcp_options[option_index].option_value, msglen);
+            }
+            //memcpy((dhopt_buff + dhopt_size + 2), hostname_buff, strlen((const char *) hostname_buff));
+
+            dhopt_size = dhopt_size + 2 + msglen;
+        }
+
+        return 0;
 }
 
 /*
@@ -807,7 +841,7 @@ int build_dhpacket(int pkt_type)
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_IP);
 		}
-		//print_buff(dhcp_packet_disc, sizeof(struct ethernet_hdr));
+		//(dhcp_packet_disc, sizeof(struct ethernet_hdr));
 
 		if (padding_flag && dhcp_packet_size < MINIMUM_PACKET_SIZE) {
 			memset(dhopt_buff + dhopt_size, 0, MINIMUM_PACKET_SIZE - dhcp_packet_size);
@@ -1005,7 +1039,7 @@ int check_packet(int pkt_type)
 			if((ntohs(arp_hg->ar_op)) == ARPOP_REQUEST && (htonl(ip_address)) == (*((u_int32_t *)(arp_hg->target_ip)))) {
 				return ARP_RCVD;
 			}
-		} else if(vlan && ntohs(vlan) == vlan_hg->vlan_priority_c_vid & VLAN_VIDMASK) {
+		} else if(vlan && ntohs(vlan) == (vlan_hg->vlan_priority_c_vid & VLAN_VIDMASK)) {
 			if((ntohs(arp_hg->ar_op)) == ARPOP_REQUEST && (htonl(ip_address)) == (*((u_int32_t *)(arp_hg->target_ip)))) {
 				fprintf(stdout, "Arp request received\n"); 
 				return ARP_RCVD;
@@ -1016,7 +1050,7 @@ int check_packet(int pkt_type)
 			if((ntohs(eth_hg->ether_type)) == ETHERTYPE_IP && iph_g->protocol == 1 && ip_address == ntohl(iph_g->daddr) && icmp_hg->icmp_type == ICMP_ECHO) {
 				return ICMP_RCVD;
 			}
-		} else if(vlan && ntohs(vlan) == vlan_hg->vlan_priority_c_vid & VLAN_VIDMASK) {
+		} else if(vlan && ntohs(vlan) == (vlan_hg->vlan_priority_c_vid & VLAN_VIDMASK)) {
 			if((ntohs(vlan_hg->vlan_len)) == ETHERTYPE_IP && iph_g->protocol == 1 && ip_address == ntohl(iph_g->daddr) && icmp_hg->icmp_type == ICMP_ECHO) {
 				return ICMP_RCVD;
 			}
@@ -1115,9 +1149,19 @@ int print_dhinfo(int pkt_type)
 
 					fprintf(stdout, "FQDN Client name - %s\n", fqdn_client_name);
 				}
+                                break;
+
+                        default:
+				fprintf(stdout, "Option no - %d, option length - %d", *dhopt_pointer_g, *(dhopt_pointer_g + 1));
+                                print_dhoption((dhopt_pointer_g + 2),*(dhopt_pointer_g + 1));
 		}
 
-		dhopt_pointer_g = dhopt_pointer_g + *(dhopt_pointer_g + 1) + 2;
+                if (*(dhopt_pointer_g) == DHCP_PAD) {
+                    /* DHCP_PAD option - increment dhopt_pointer_g by one */
+                    dhopt_pointer_g = dhopt_pointer_g + 1;
+                } else {
+                    dhopt_pointer_g = dhopt_pointer_g + *(dhopt_pointer_g + 1) + 2;
+                }
 	}
 
 	fprintf(stdout, "----------------------------------------------------------\n\n");
@@ -1246,6 +1290,28 @@ int get_dhinfo()
 	}
 	fclose(dh_file);
 	unlink(dhmac_fname);
+	return 0;
+}
+
+/* DHCP option print function - Prints DHCP option on HEX and ASCII format */
+int print_dhoption(u_int8_t *buff, int size)
+{
+	int tmp;
+	fprintf(stdout, "\n  OPTION data (HEX)\n    ");
+	for(tmp = 0; tmp < size; tmp++) {
+		fprintf(stdout, "%02X ", buff[tmp]);
+		if((tmp % 16) == 0 && tmp != 0) {
+			fprintf(stdout, "\n    ");
+		}
+	}
+        fprintf(stdout, "\n  OPTION data (ASCII)\n    ");
+	for(tmp = 0; tmp < size; tmp++) {
+		fprintf(stdout, "%c", buff[tmp]);
+		if((tmp % 16) == 0 && tmp != 0) {
+			fprintf(stdout, "\n    ");
+		}
+	}
+        fprintf(stdout, "\n");
 	return 0;
 }
 

@@ -29,11 +29,13 @@ int build_option51();		/* Option51: Rqstd lease time. Builds option51*/
 int build_option60_vci();	/* Vendor class identifier */
 int build_option12_hostname(); /* Hostname */
 int build_option81_fqdn(); /* FQDN */
+int build_custom_dhcp_options(); /* Custom DHCP options */
 int build_optioneof();		/* End of option */
 
 int build_dhpacket(int pkt_type);	/* Build DHCP disc, req packets  */
 int build_packet(int pkt_type); /* Builds ARP and ICMP reply packets */
 int print_buff(u_int8_t *buff, int size);/* Debug routine */
+int print_dhoption(u_int8_t *buff, int size); /* Print dhcp option */
 int map_all_layer_ptr(int pkt_type);	/* maps all layer pointer on DHCP packet */
 int check_packet(int pkt_type);	/* Checks the packet for DHCP offer & ack */
 int print_dhinfo(int pkt_type);	/* Prints DHCP offer & ack informations */
@@ -261,6 +263,25 @@ struct dhcpv4_hdr
 #define DHCP_MSGNACK         0x06
 #define DHCP_MSGRELEASE      0x07
 #define DHCP_MSGINFORM       0x08
+};
+
+
+
+/*
+ *  Custom DHCP option struct
+ */
+struct custom_dhcp_option_hdr
+{
+	u_int8_t option_no;     
+	u_int8_t option_type;  
+	u_int8_t option_len;  
+#define CUST_DHCP_OPTION_STRING    0
+#define CUST_DHCP_OPTION_NUMBER    1
+#define CUST_DHCP_OPTION_HEX       2
+#define CUST_DHCP_OPTION_IP        3
+        u_char option_value[256];
+        u_int32_t option_value_num;
+        u_int32_t option_value_ip;
 };
 
 #ifndef ETHERTYPE_IP

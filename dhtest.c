@@ -41,6 +41,14 @@ u_int32_t dhopt_size = { 0 };
 u_char dhmac[ETHER_ADDR_LEN] = { 0 };
 u_char dmac[ETHER_ADDR_LEN];
 
+/* 
+* For Custom DHCP options
+* Static arrays for custom_dhcp_option_hdr
+*/
+#define MAX_CUSTOM_DHCP_OPTIONS 64
+u_int8_t no_custom_dhcp_options = { 0 };
+struct custom_dhcp_option_hdr custom_dhcp_options[MAX_CUSTOM_DHCP_OPTIONS];
+
 char dhmac_fname[20];
 char iface_name[30] = { 0 };
 char ip_str[128];
@@ -101,6 +109,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
 	fprintf(stdout, "  -o, --option60-vci\t[ VCI_string ]\t# Vendor Class Idendifier string\n");
 	fprintf(stdout, "  -h, --option12-hostname [ hostname_string ] # Client hostname string\n");
+	fprintf(stdout, "  -c, --custom-dhcp-option [ option_format ] # option_format - option_number,type_of_option_value(str|num|hex|ip),option_value\n");
 	fprintf(stdout, "  -v, --vlan\t\t[ vlan_id ]\t# VLAN ID. Range(1 - 4094)\n");
 	/* fprintf(stdout, "  -x, --dhcp_xid\t[ dhcp_xid ]\n"); */
 	fprintf(stdout, "  -t, --tos\t\t[ TOS_value ]\t# IP header TOS value\n");
@@ -119,7 +128,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -a, --nagios\t\t\t\t# Nagios output format. \n");
 	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
-	fprintf(stdout, "  dhtest version 1.3\n");
+	fprintf(stdout, "  dhtest version 1.4\n");
 }
 
 
@@ -143,6 +152,7 @@ int main(int argc, char *argv[])
 		{ "option50-ip", required_argument, 0, 'I' },
 		{ "option60-vci", required_argument, 0, 'o' },
 		{ "option12-hostname", required_argument, 0, 'h' },
+		{ "custom-dhcp-option", required_argument, 0, 'c' },
 		{ "timeout", required_argument, 0, 'T' },
 		{ "bind-ip", no_argument, 0, 'b' },
 		{ "bind-timeout", required_argument, 0, 'k' },
@@ -163,7 +173,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansu::T:P:g:S:I:o:k:L:h:d:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansu::T:P:g:S:I:o:k:L:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -269,6 +279,105 @@ int main(int argc, char *argv[])
 				}
 				fqdn_flag = 1;
 				memcpy(fqdn_buff, optarg, sizeof(fqdn_buff));
+				break;
+
+			case 'c':
+                                if (no_custom_dhcp_options == MAX_CUSTOM_DHCP_OPTIONS) {
+					fprintf(stdout, "MAX custom DHCP options reached. MAX custom DHCP options supported : %d\n", \
+                                            MAX_CUSTOM_DHCP_OPTIONS);
+					exit(2);
+                                }
+
+                                //scanf the custom dhcp option
+                                //format - option_no_dec,str|num|hex|ip,option_value
+                                
+                                u_int8_t option_no, option_type;
+                                u_char option_value[256] = { 0 };
+                                u_int32_t option_value_num = { 0 }, option_value_ip = { 0 };
+                                int option_index = 0;
+                                int scanf_state;
+
+                                if ((sscanf((char *)optarg, "%u,str,%255[^\n]s", (u_int32_t *) &option_no, option_value)) == 2) {
+                                    if ((strlen(option_value) >= 256)) {
+                                        fprintf(stdout, "dhcp custom option value string length is more than 255\n");
+                                        exit(2);
+                                    }
+                                    no_custom_dhcp_options = no_custom_dhcp_options + 1;
+                                    option_index = no_custom_dhcp_options - 1;
+
+                                    custom_dhcp_options[option_index].option_no = option_no;
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_STRING; 
+                                    custom_dhcp_options[option_index].option_len = strlen((const char *) option_value); 
+                                    memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
+
+                                } else if ((sscanf((char *)optarg, "%u,num,%u", (u_int32_t *) &option_no, &option_value_num)) == 2) {
+                                    no_custom_dhcp_options = no_custom_dhcp_options + 1;
+                                    option_index = no_custom_dhcp_options - 1;
+
+                                    custom_dhcp_options[option_index].option_no = option_no;
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_NUMBER; 
+                                    custom_dhcp_options[option_index].option_len = 4; //length of 4 byte
+                                    custom_dhcp_options[option_index].option_value_num = htonl(option_value_num); 
+                                    //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
+                                    
+                                } else if ((sscanf((char *)optarg, "%u,hex,%254s", (u_int32_t *) &option_no, option_value)) == 2) {
+                                    if ((strlen(option_value) >= 255)) {
+                                        fprintf(stdout, "dhcp custom option value hex length is more than 254\n");
+                                        exit(2);
+                                    }
+                                    no_custom_dhcp_options = no_custom_dhcp_options + 1;
+                                    option_index = no_custom_dhcp_options - 1;
+                                    //fprintf(stdout, "option_value string %s\n", option_value);
+                                    if ((strlen((const char *) option_value) % 2) == 1) {
+                                        fprintf(stdout, "option hex value length must be even\n");
+                                        exit(2);
+                                    }
+                                    int hex_length = (strlen((const char *) option_value)/2);
+
+                                    custom_dhcp_options[option_index].option_no = option_no;
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_HEX; 
+                                    custom_dhcp_options[option_index].option_len = hex_length; 
+                                    //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
+                                    int tmp, index = 0;
+                                    for(tmp = 0; tmp < hex_length; tmp++) {
+                                        sscanf(&option_value[index], "%2X", &custom_dhcp_options[option_index].option_value[tmp]);
+                                        index = index + 2;
+                                    }
+
+                                    //print_buff(custom_dhcp_options[option_index].option_value, (hex_length/2));
+                                } else if ((sscanf((char *)optarg, "%u,ip,%s", (u_int32_t *) &option_no, option_value)) == 2) {
+                                    no_custom_dhcp_options = no_custom_dhcp_options + 1;
+                                    option_index = no_custom_dhcp_options - 1;
+
+                                    option_value_ip = inet_addr((const char *) option_value);
+                                    if (option_value_ip == INADDR_NONE) { 
+                                        fprintf(stdout, "Invalid IP address on option value\n");
+                                        exit(2);
+                                    }
+                                    custom_dhcp_options[option_index].option_no = option_no;
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_IP; 
+                                    custom_dhcp_options[option_index].option_len = 4; //length of 4 byte
+                                    custom_dhcp_options[option_index].option_value_ip = option_value_ip; 
+                                    //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
+
+                                } else {
+                                    fprintf(stdout, "custom option parse error. Use correct format\n");
+                                    exit(2);
+                                }
+                                
+                                /* - For debugging
+                                fprintf(stdout, "Custom dhcp option - %s\n", optarg);
+                                fprintf(stdout, "Custom dhcp option count - %d\n", no_custom_dhcp_options);
+                                fprintf(stdout, "Option_no parsed - %d \n", custom_dhcp_options[option_index].option_no);
+                                fprintf(stdout, "Option_format - %d \n", custom_dhcp_options[option_index].option_type);
+                                fprintf(stdout, "Option_value_num - %u \n", custom_dhcp_options[option_index].option_value_num);
+                                fprintf(stdout, "Option_value_ip - %u\n", custom_dhcp_options[option_index].option_value_ip);
+                                if (custom_dhcp_options[option_index].option_type == CUST_DHCP_OPTION_HEX) {
+                                    print_buff(custom_dhcp_options[option_index].option_value, ((strlen((const char *) option_value))/2));
+                                } else {
+                                    fprintf(stdout, "Option_value string - %s\n", custom_dhcp_options[option_index].option_value);
+                                }
+                                */
 				break;
 
 			case 'n':
@@ -404,6 +513,7 @@ int main(int argc, char *argv[])
 	if(option50_ip) {
 		build_option50();		/* Option50 - req. IP  */
 	}
+        build_option55();                       /* Option55 - parameter request list */
 	if(option51_lease_time) {
 		build_option51();               /* Option51 - DHCP lease time requested */
 	}
@@ -411,6 +521,10 @@ int main(int argc, char *argv[])
 	if(vci_flag == 1) {
 		build_option60_vci(); 		/* Option60 - VCI  */
 	}
+        /* Build custom options */
+        if(no_custom_dhcp_options) {
+            build_custom_dhcp_options();
+        }
 	build_optioneof();			/* End of option */
 	build_dhpacket(DHCP_MSGDISCOVER);	/* Build DHCP discover packet */
 
@@ -462,7 +576,11 @@ int main(int argc, char *argv[])
 	if(option51_lease_time) {
 		build_option51();                       /* Option51 - DHCP lease time requested */
 	}
-	build_option55();
+        build_option55();                               /* Option55 - parameter request list */
+        /* Build custom options */
+        if(no_custom_dhcp_options) {
+                build_custom_dhcp_options();
+        }
 	build_optioneof();
 	build_dhpacket(DHCP_MSGREQUEST); 		/* Builds specified packet */
 	int dhcp_ack_state = 1;
