@@ -1,273 +1,83 @@
-DHTEST README
--------------
 
-1. Run 'make' command on shell to complile and build dhtest.
-
-2. Run 'make clean' to remove dhtest
-
-dhtest version 1.0 supports the following
------------------------------------------
-
-1. IP obtaining through DHCP
-
-2. Release obtained IP with -r flag
-
-3. VLAN
-
-4. Broadcast flag support
-
-5. DHCP option 50 - Requested IP
-
-6. DHCP option 60 - Vendor Class Identifier
-
+  dhtest readme
+  *************
  
-dhtest version 1.1 supports the following
------------------------------------------
+  About the tool
+  --------------
+  dhtest - linux dhcp client simulation tool. It can simulate hundreds of dhcp
+  client from a linux machine. Linux root login is needed because the tool requires 
+  layer2 raw socket for sending and receiving dhcp packets.
+  
+  Installation
+  ------------
 
-1. Binding obtained IP for a default timeout of 3600 seconds
+    * Download the latest source from github as zip. 
+      Download link - https://github.com/saravana815/dhtest/archive/master.zip
 
-2. Support of bind timout with -k flag on command line
+        [sargandh@CentOS Desktop]$ unzip dhtest-master.zip 
+        [sargandh@CentOS Desktop]$ cd dhtest-master
+        [sargandh@CentOS dhtest-master]$ make
+        gcc    -c -o dhtest.o dhtest.c
+        gcc    -c -o functions.o functions.c
+        gcc dhtest.o functions.o -o dhtest
+        [sargandh@CentOS dhtest-master]$ ls -lh dhtest
+        -rwxrwxr-x 1 sargandh sargandh 38K Mar 13 10:47 dhtest
 
-3. Added DHCP option 51 - Requested lease time from server
+  dhtest 1.4 - till 1.4 features supported
+  -----------------------------------------
+  
+    * IP obtaining through DHCP
+    * Release obtained IP with -r flag
+    * VLAN
+    * Broadcast flag support
+    * DHCP option 50 - Requested IP
+    * DHCP option 60 - Vendor Class Identifier
+    * Binding obtained IP for a default timeout of 3600 seconds
+    * Support of bind timout with -k flag on command line
+    * Added DHCP option 51 - Requested lease time from server
+    * Added DHCP option 12 - Hostname
+    * Added DHCP option 81 - Fqdn
+    * Option to send in unicast mode.
+    * Option to output for nagios.
+    * Option to change port, patch by Alan Dekok.
+    * Custom option support - Allows packing of any dhcp option in number/string/hex formart
 
-dhtest version 1.2 supports the following
------------------------------------------
+  License
+  ---------
+  Please see the LICENSE file.
 
-1. Added DHCP option 12 - Hostname
+  Tool usage examples
+  -------------------
+    * https://sargandh.wordpress.com/2012/02/23/linux-dhcp-client-simulation-tool/
 
-2. Added DHCP option 81 - Fqdn
+    * custom option examples
+        dhcp option 82 
+        --------------
+          [root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 
+          -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131
+                     | ||              |
+                     | ||              |Subopt value - 'Gig0/1/0' 
+                     | | **************        
+                     | Subopt len 8
+                   Opt82 subopt 1
+                   Circuit id 
 
-dhtest version 1.3 supports the following
-----------------------------------------
+          [root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 
+          -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131
+                                         | ||              |
+                                         | ||              |Subopt value - '00:00:00:11:11:11' 
+                                         | | **************        
+                                         | Subopt len 17
+                                       Opt82 subopt 2
+                                       Remote id 
 
-1. Option to send in unicast mode.
+        dhcp option 60 and 82 (multiple custom options) 
+        -----------------------------------------------
+          [root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 60,str,"MSFT 5.0" 
+          -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 
 
-2. Option to output for nagios.
+  Contacts
+  -------- 
+  Authour: Saravanakumar.G
+  Send your comments, enhancements and bugs to saravana815@gmail.com
 
-3. Option to change port, patch by Alan Dekok.
-
-Authour: Saravanakumar.G
-Send your comments, enhancements and bugs to saravana815@gmail.com
-
-custom option examples
-----------------------
-
-option 82
-
-[root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c
-82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 -V
-DHCP discover sent       - Client MAC : 00:00:00:11:11:11
-DHCP offer received      - Offered IP : 10.0.2.16
-
-DHCP offer details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    02 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-DHCP request sent        - Client MAC : 00:00:00:11:11:11
-DHCP ack received        - Acquired IP: 10.0.2.16
-
-DHCP ack details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    05 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-option 50 requested ip
-
-[root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 50,ip,1.2.3.4 -V
-DHCP discover sent       - Client MAC : 00:00:00:11:11:11
-DHCP offer received      - Offered IP : 10.0.2.16
-
-DHCP offer details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    02 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-DHCP request sent        - Client MAC : 00:00:00:11:11:11
-DHCP ack received        - Acquired IP: 10.0.2.16
-
-DHCP ack details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    05 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-option 60 - VCI
-
-[root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 60,str,"MSFT 5.0"
--V
-DHCP discover sent       - Client MAC : 00:00:00:11:11:11
-DHCP offer received      - Offered IP : 10.0.2.16
-
-DHCP offer details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    02 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-DHCP request sent        - Client MAC : 00:00:00:11:11:11
-DHCP ack received        - Acquired IP: 10.0.2.16
-
-DHCP ack details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    05 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-multiple custom option - option 50, 60 and 82 
-
-[root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 50,ip,1.2.3.4 -c 60,str,"MSFT 5.0" -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 -V 
-DHCP discover sent       - Client MAC : 00:00:00:11:11:11
-DHCP offer received      - Offered IP : 10.0.2.16
-
-DHCP offer details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    02 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-DHCP request sent        - Client MAC : 00:00:00:11:11:11
-DHCP ack received        - Acquired IP: 10.0.2.16
-
-DHCP ack details
-----------------------------------------------------------
-DHCP offered IP from server - 10.0.2.16
-Next server IP(Probably TFTP server) - 10.0.2.4
-Option no - 53, option length - 1
-  OPTION data (HEX)
-    05 
-  OPTION data (ASCII)
-    
-Subnet mask - 255.255.255.0
-Router/gateway - 10.0.2.2
-DNS server - 72.163.128.140
-DNS server - 171.70.168.183
-Option no - 15, option length - 9
-  OPTION data (HEX)
-    63 69 73 63 6F 2E 63 6F 6D 
-  OPTION data (ASCII)
-    cisco.com
-Lease time - 1 Days 0 Hours 0 Minutes
-DHCP server  - 10.0.2.2
-----------------------------------------------------------
-
-[root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 50,ip,1.2.3.4 -c 60,str,"MSFT 5.0" -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 
-DHCP discover sent       - Client MAC : 00:00:00:11:11:11
-DHCP offer received      - Offered IP : 10.0.2.16
-DHCP request sent        - Client MAC : 00:00:00:11:11:11
-DHCP ack received        - Acquired IP: 10.0.2.16

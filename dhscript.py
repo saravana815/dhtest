@@ -86,4 +86,5 @@ run_dhtest(mac, ' -p', "DHCP ack received")
 run_dhtest(mac, ' -g 10.0.2.1', "DHCP ack received")
 run_dhtest(mac, ' -a', "Acquired IP")
 run_dhtest(mac, ' -S 10.0.2.2 ', "DHCP ack received")
+run_dhtest(mac, ' -c 60,str,"MSFT 5.0" -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 ', "DHCP ack received")
 
