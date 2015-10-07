@@ -541,7 +541,7 @@ int main(int argc, char *argv[])
 
 		if(timeout) {
 			time_now = time(NULL);
-			if((time_now - time_last) > timeout) {
+			if((time_now - time_last) >= timeout) {
 				if (nagios_flag)
 					fprintf(stdout, "CRITICAL: Timeout reached: DISCOVER.");
 				close_socket();
