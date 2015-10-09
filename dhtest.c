@@ -68,6 +68,8 @@ u_int32_t option51_lease_time = 0;
 u_int32_t port = 67;
 u_int8_t unicast_flag = 0;
 u_int8_t nagios_flag = 0;
+u_int8_t json_flag = 0;
+u_int8_t json_first = 1;
 u_char *giaddr = "0.0.0.0";
 u_char *server_addr = "255.255.255.255";
 
@@ -127,6 +129,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -u, --unicast\t\t[ ip ]\t\t# Unicast request, IP is optional. If not specified, the interface address will be used. \n");
 	fprintf(stdout, "  -a, --nagios\t\t\t\t# Nagios output format. \n");
 	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
+	fprintf(stdout, "  -j, --json\t\t\t\t# Set the output format to json\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
 	fprintf(stdout, "  dhtest version 1.4\n");
 }
@@ -168,12 +171,13 @@ int main(int argc, char *argv[])
 		{ "nagios", no_argument, 0, 'a'},
 		{ "server", required_argument, 0, 'S'},
 		{ "release", no_argument, 0, 'r'},
+		{ "json", no_argument, 0, 'j'},
 		{ 0, 0, 0, 0 }
 	};
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansu::T:P:g:S:I:o:k:L:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansju::T:P:g:S:I:o:k:L:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -441,6 +445,10 @@ int main(int argc, char *argv[])
 				nagios_flag = 1;
 				break;
 
+			case 'j':
+				json_flag = 1;
+				break;
+
 			default:
 				exit(2);
 		}
@@ -451,12 +459,31 @@ int main(int argc, char *argv[])
 		print_help(argv[0]);
 		exit(2);
 	}
+
+	if(json_flag) {
+		fprintf(stdout, "[");
+	}
+
 	/* Opens the PF_PACKET socket */
 	if(open_socket() < 0) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Socket error.");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Socket error.\","
+					"\"result\":\"error\","
+					"\"error-type\":\"socket\","
+					"\"error-msg\":\"Socket error.\"}"
+					"]");
+		} else {
 			fprintf(stdout, "Socket error\n");
+		}
+
 		exit(2);
 	}
 
@@ -479,6 +506,18 @@ int main(int argc, char *argv[])
 		if(get_dhinfo() == ERR_FILE_OPEN) {
 			if (nagios_flag) {
 				fprintf(stdout, "CRITICAL: Error on opening DHCP info file.");
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"Error on opening DHCP info file.\","
+						"\"result\":\"error\","
+						"\"error-type\":\"info-file\","
+						"\"error-msg\":\"Error on opening DHCP info file.\"}"
+						"]");
 			} else {
 				fprintf(stdout, "Error on opening DHCP info file\n");
 				fprintf(stdout, "Release the DHCP IP after acquiring\n");
@@ -542,17 +581,47 @@ int main(int argc, char *argv[])
 		if(timeout) {
 			time_now = time(NULL);
 			if((time_now - time_last) >= timeout) {
-				if (nagios_flag)
+				if (nagios_flag) {
 					fprintf(stdout, "CRITICAL: Timeout reached: DISCOVER.");
+				} else if(json_flag) {
+					if(!json_first) {
+						fprintf(stdout, ",");
+					} else {
+						json_first = 0;
+					}
+
+					fprintf(stdout, "{\"msg\":\"Timeout reached: DISCOVER.\","
+                                                "\"result\":\"error\","
+                                                "\"error-type\":\"timeout\","
+						"\"error-subtype\":\"DISCOVER\""
+                                                "\"error-msg\":\"Timeout reached: DISCOVER.\"}"
+						"]");
+				}
+
 				close_socket();
 				exit(2);
 			}
 		}
 		if(dhcp_offer_state == DHCP_OFFR_RCVD) {
-			if (!nagios_flag)
+			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP offer received\t - ");
+			} else if(!nagios_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP offer received - %s\","
+						"\"result\":\"success\","
+						"\"result-type\":\"OFFER\","
+						"\"result-value\":\"%s\""
+						"}",
+					get_ip_str(dhcph_g->dhcp_yip), get_ip_str(dhcph_g->dhcp_yip));
+			}
+
 			set_serv_id_opt50();
-			if (!nagios_flag)
+			if (!nagios_flag && !json_flag)
   				fprintf(stdout, "Offered IP : %s\n", get_ip_str(dhcph_g->dhcp_yip));
 			if(!nagios_flag && verbose) { 
 				print_dhinfo(DHCP_MSGOFFER);
@@ -592,10 +661,24 @@ int main(int argc, char *argv[])
 		if(timeout) {
 			time_now = time(NULL);
 			if((time_now - time_last) > timeout) {
-				if (nagios_flag)
+				if (nagios_flag) {
 					fprintf(stdout, "CRITICAL: Timeout reached: REQUEST.");
-				else
+				} else if(json_flag) {
+					if(!json_first) {
+						fprintf(stdout, ",");
+					} else {
+						json_first = 0;
+					}
+
+					fprintf(stdout, "{\"msg\":\"Timeout reached: REQUEST.\","
+                                                "\"result\":\"error\","
+                                                "\"error-type\":\"timeout\","
+                                                "\"error-subtype\":\"REQUEST\""
+                                                "\"error-msg\":\"Timeout reached: REQUEST.\"}"
+                                                "]");
+				} else {
 					fprintf(stdout, "Timeout reached. Exiting\n");
+				}
 				close_socket();
 				exit(1);
 			}
@@ -604,6 +687,19 @@ int main(int argc, char *argv[])
 		if(dhcp_ack_state == DHCP_ACK_RCVD) {
 			if (nagios_flag) {
 				fprintf(stdout, "OK: Acquired IP: %s", get_ip_str(dhcph_g->dhcp_yip));
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP ack received - %s\","
+                                                "\"result\":\"success\","
+                                                "\"result-type\":\"ACK\","
+                                                "\"result-value\":\"%s\""
+						"}",
+                                        get_ip_str(dhcph_g->dhcp_yip), get_ip_str(dhcph_g->dhcp_yip));
 			} else {
 				fprintf(stdout, "DHCP ack received\t - ");
 				fprintf(stdout, "Acquired IP: %s\n", get_ip_str(dhcph_g->dhcp_yip));
@@ -615,17 +711,49 @@ int main(int argc, char *argv[])
 				print_dhinfo(DHCP_MSGACK);
 			}
 		} else if (dhcp_ack_state == DHCP_NAK_RCVD) {
-			if (!nagios_flag) {
+			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP nack received\t - ");
 				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP nack received - %s\","
+                                                "\"result\":\"info\","
+                                                "\"result-type\":\"NACK\","
+                                                "\"result-value\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
+						"}",
+						dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
 			}
 		}
 	}
 	/* If IP listen flag is enabled, Listen on obtained for ARP, ICMP protocols  */
 	if(!nagios_flag && ip_listen_flag) {
-		fprintf(stdout, "\nListening on %s for ARP and ICMP protocols\n", iface_name);
-		fprintf(stdout, "IP address: %s, Listen timeout: %d seconds\n", get_ip_str(htonl(ip_address)), listen_timeout);
+		if(!json_flag) {
+			fprintf(stdout, "\nListening on %s for ARP and ICMP protocols\n", iface_name);
+			fprintf(stdout, "IP address: %s, Listen timeout: %d seconds\n", get_ip_str(htonl(ip_address)), listen_timeout);
+		} else {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Listening on %s for ARP and ICMP protocols."
+					"IP address: %s, Listen timeout: %d seconds\","
+					"\"result\":\"info\","
+					"\"result-type\":\"listen\","
+					"\"result-ip\":\"%s\","
+					"\"result-timeout\":\"%d\""
+					"}",
+					iface_name, get_ip_str(htonl(ip_address)), listen_timeout,
+					get_ip_str(htonl(ip_address)), listen_timeout);
+		}
+
 		int arp_icmp_rcv_state = 0;
 		while(arp_icmp_rcv_state != LISTEN_TIMOUET) { 
 			arp_icmp_rcv_state = recv_packet(ARP_ICMP_RCV);
@@ -647,11 +775,31 @@ int main(int argc, char *argv[])
 				send_packet(ICMP_SEND);  
 			} 
 		}
-		fprintf(stdout, "Listen timout reached\n");
+
+		if(!json_flag) {
+			fprintf(stdout, "Listen timout reached\n");
+		} else {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Listen timout reached.\","
+					"\"result\":\"error\","
+					"\"error-type\":\"timeout\","
+					"\"error-subtype\":\"listen\""
+					"\"error-msg\":\"Listen timout reached.\"}");
+		}
 	}
 	/* Clear the promiscuous mode */
 	clear_promisc();
 	/* Close the socket */
 	close_socket();
+
+	if(json_flag) {
+		fprintf(stdout, "]");
+	}
+
 	return 0;
 }
