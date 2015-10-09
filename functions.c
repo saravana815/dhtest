@@ -48,6 +48,8 @@ extern u_int32_t option51_lease_time;
 extern u_int32_t port;
 extern u_int8_t unicast_flag;
 extern u_int8_t nagios_flag;
+extern u_int8_t json_flag;
+extern u_int8_t json_first;
 extern u_char *giaddr;
 extern u_char *server_addr;
 
@@ -130,10 +132,24 @@ int set_promisc()
 	ifr.ifr_flags = (IFF_PROMISC | IFF_UP);
 	status = ioctl(sock_packet, SIOCSIFFLAGS, &ifr);
 	if(status < 0) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Error setting promisc.");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Error setting promisc.\","
+					"\"result\":\"error\","
+					"\"error-type\":\"enable-promisc\","
+					"\"error-msg\":\"Error setting promisc.\"}"
+					"]");
+		} else {
 			perror("Error on setting promisc");
+		}
+
 		exit(2);
 	}
         return 0;
@@ -147,10 +163,24 @@ int clear_promisc()
 	ifr.ifr_flags = IFF_UP;
 	status = ioctl(sock_packet, SIOCSIFFLAGS, &ifr);
 	if(status < 0) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Error on disabling promisc");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Error on disabling promisc.\","
+                                        "\"result\":\"error\","
+                                        "\"error-type\":\"disable-promisc\","
+                                        "\"error-msg\":\"Error on disabling promisc.\"}"
+                                        "]");	
+		} else {
 			perror("Error on disabling promisc");
+		}
+
 		exit(2);
 	}
 	return 0;
@@ -172,10 +202,24 @@ u_int32_t get_interface_address()
 	status = ioctl(sock_packet, SIOCGIFADDR, &ifr);
 
 	if(status < 0) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Error getting interface address.");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Error getting interface address.\","
+                                        "\"result\":\"error\","
+                                        "\"error-type\":\"get-iface-addr\","
+                                        "\"error-msg\":\"Error getting interface address.\"}"
+                                        "]");
+		} else {
 			perror("Error getting interface address.");
+		}
+
 		exit(2);
 	}
 	return ((struct sockaddr_in *) &ifr.ifr_addr)->sin_addr.s_addr;
@@ -226,31 +270,93 @@ int send_packet(int pkt_type)
 	}
 
 	if(ret < 0) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Packet send failure.");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Packet send failure.\","
+				"\"result\":\"error\","
+				"\"error-type\":\"pkg-send\","
+				"\"error-msg\":\"Packet send failure.\"}"
+				"]");
+		} else {
 			perror("Packet send failure");
+		}
+
 		close(sock_packet);
 		exit(2);
 		return PACK_SEND_ERR;
 	} else {
 		if(pkt_type == DHCP_MSGDISCOVER) {
-			if (!nagios_flag) {
+			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP discover sent\t - ");
 				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP discover sent - Client MAC: "
+					"%02x:%02x:%02x:%02x:%02x:%02x\","
+					"\"result\":\"success\","
+					"\"result-type\":\"sent\","
+					"\"result-subtype\":\"DISCOVER\","
+					"\"result-mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
+					"}",
+					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5],
+					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
 			}
 		} else if (pkt_type == DHCP_MSGREQUEST) {
-			if (!nagios_flag) {
+			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP request sent\t - ");
 				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP request sent - Client MAC: "
+                                        "%02x:%02x:%02x:%02x:%02x:%02x\","
+                                        "\"result\":\"success\","
+                                        "\"result-type\":\"sent\","
+                                        "\"result-subtype\":\"REQUEST\","
+                                        "\"result-mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
+                                        "}",    
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5],
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
 			}
 		} else if (pkt_type == DHCP_MSGRELEASE) { 
-			if (!nagios_flag) {
+			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP release sent\t - ");
 				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
 					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP release sent - Client MAC: "
+                                        "%02x:%02x:%02x:%02x:%02x:%02x\","
+                                        "\"result\":\"success\","
+                                        "\"result-type\":\"sent\","
+                                        "\"result-subtype\":\"RELEASE\","
+                                        "\"result-mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
+                                        "}",    
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5],
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
 			}
 		}
 	}
@@ -1041,7 +1147,19 @@ int check_packet(int pkt_type)
 			}
 		} else if(vlan && ntohs(vlan) == (vlan_hg->vlan_priority_c_vid & VLAN_VIDMASK)) {
 			if((ntohs(arp_hg->ar_op)) == ARPOP_REQUEST && (htonl(ip_address)) == (*((u_int32_t *)(arp_hg->target_ip)))) {
-				fprintf(stdout, "Arp request received\n"); 
+				if(json_flag) {
+					if(!json_first) {
+						fprintf(stdout, ",");
+					} else {
+						json_first = 0;
+					}
+
+					fprintf(stdout, "{\"msg\":\"Arp request received - %s\","
+                                                "\"result\":\"success\","
+                                                "\"result-type\":\"arp-received\"}");
+				} else {
+					fprintf(stdout, "Arp request received\n"); 
+				}
 				return ARP_RCVD;
 			}
 		}
@@ -1087,22 +1205,66 @@ int print_dhinfo(int pkt_type)
 	if(pkt_type == DHCP_MSGOFFER) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
 
-		fprintf(stdout, "\nDHCP offer details\n");
-		fprintf(stdout, "----------------------------------------------------------\n");
-		fprintf(stdout, "DHCP offered IP from server - %s\n", get_ip_str(dhcph_g->dhcp_yip));
-		fprintf(stdout, "Next server IP(Probably TFTP server) - %s\n", get_ip_str(dhcph_g->dhcp_sip));
-		if(dhcph_g->dhcp_gip) {
-			fprintf(stdout, "DHCP Relay agent IP - %s\n", get_ip_str(dhcph_g->dhcp_gip));
+		if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"DHCP offer details\","
+				"\"result\":\"info\","
+				"\"result-type\":\"offer\","
+				"\"result-ip\":\"%s\","
+				"\"result-next-srv\":\"%s\",",
+				get_ip_str(dhcph_g->dhcp_yip),
+				get_ip_str(dhcph_g->dhcp_sip));
+
+			if(dhcph_g->dhcp_gip) {
+				fprintf(stdout, "\"result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
+			}
+
+			fprintf(stdout, "}");
+		} else {		
+			fprintf(stdout, "\nDHCP offer details\n");
+			fprintf(stdout, "----------------------------------------------------------\n");
+			fprintf(stdout, "DHCP offered IP from server - %s\n", get_ip_str(dhcph_g->dhcp_yip));
+			fprintf(stdout, "Next server IP(Probably TFTP server) - %s\n", get_ip_str(dhcph_g->dhcp_sip));
+			if(dhcph_g->dhcp_gip) {
+				fprintf(stdout, "DHCP Relay agent IP - %s\n", get_ip_str(dhcph_g->dhcp_gip));
+			}
 		}
 	} else if( pkt_type == DHCP_MSGACK) {
 		map_all_layer_ptr(DHCP_MSGACK);
 
-		fprintf(stdout, "\nDHCP ack details\n");
-		fprintf(stdout, "----------------------------------------------------------\n");
-		fprintf(stdout, "DHCP offered IP from server - %s\n", get_ip_str(dhcph_g->dhcp_yip));
-		fprintf(stdout, "Next server IP(Probably TFTP server) - %s\n", get_ip_str(dhcph_g->dhcp_sip));
-		if(dhcph_g->dhcp_gip) {
-			fprintf(stdout, "DHCP Relay agent IP - %s\n", get_ip_str(dhcph_g->dhcp_gip));
+		if(json_flag) {
+                        if(!json_first) {
+                                fprintf(stdout, ",");
+                        } else {
+                                json_first = 0;
+                        }
+                        
+                        fprintf(stdout, "{\"msg\":\"DHCP ack details\","
+                                "\"result\":\"info\","
+                                "\"result-type\":\"ack\","
+                                "\"result-ip\":\"%s\","
+                                "\"result-next-srv\":\"%s\",", 
+                                get_ip_str(dhcph_g->dhcp_yip), 
+                                get_ip_str(dhcph_g->dhcp_sip));
+
+                        if(dhcph_g->dhcp_gip) {
+                                fprintf(stdout, "\"result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
+                        }
+
+                        fprintf(stdout, "}");
+                } else {
+			fprintf(stdout, "\nDHCP ack details\n");
+			fprintf(stdout, "----------------------------------------------------------\n");
+			fprintf(stdout, "DHCP offered IP from server - %s\n", get_ip_str(dhcph_g->dhcp_yip));
+			fprintf(stdout, "Next server IP(Probably TFTP server) - %s\n", get_ip_str(dhcph_g->dhcp_sip));
+			if(dhcph_g->dhcp_gip) {
+				fprintf(stdout, "DHCP Relay agent IP - %s\n", get_ip_str(dhcph_g->dhcp_gip));
+			}
 		}
 	}
 
@@ -1110,29 +1272,111 @@ int print_dhinfo(int pkt_type)
 
 		switch(*(dhopt_pointer_g)) {
 			case DHCP_SERVIDENT:
-				fprintf(stdout, "DHCP server  - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+				if(json_flag) {
+					if(!json_first) {
+						fprintf(stdout, ",");
+					} else {
+						json_first = 0;
+					}
+
+					fprintf(stdout, "{\"msg\":\"DHCP server - %s\","
+							"\"result\":\"info\","
+							"\"result-type\":\"option\","
+							"\"result-option\":\"serverident\","
+							"\"result-ip\":\"%s\"}",
+							get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)),
+							get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+				} else {	
+					fprintf(stdout, "DHCP server  - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+				}
 				break;
 
 			case DHCP_LEASETIME: 
-				fprintf(stdout, "Lease time - %d Days %d Hours %d Minutes\n", \
-						(ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) / (3600 * 24), \
-						((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) / 3600, \
-						(((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) % 3600) / 60); 
+				if(json_flag) {
+                                        if(!json_first) {
+                                                fprintf(stdout, ",");
+                                        } else {
+                                                json_first = 0;
+                                        }
+
+                                        fprintf(stdout, "{\"msg\":\"Lease time - %d Days %d Hours %d Minutes\","
+                                                        "\"result\":\"info\","
+                                                        "\"result-type\":\"option\","
+                                                        "\"result-option\":\"leasetime\","
+                                                        "\"result-leasetime\":\"%d\"}",
+                                                        (ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) / (3600 * 24),
+                                                        ((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) / 3600,
+                                                        (((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) % 3600) / 60,
+							ntohl(*(u_int32_t *)(dhopt_pointer_g +2)));
+                                } else {
+					fprintf(stdout, "Lease time - %d Days %d Hours %d Minutes\n", \
+							(ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) / (3600 * 24), \
+							((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) / 3600, \
+							(((ntohl(*(u_int32_t *)(dhopt_pointer_g + 2))) % (3600 * 24)) % 3600) / 60); 
+				}
 				break;
 
 			case DHCP_SUBNETMASK:
-				fprintf(stdout, "Subnet mask - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+				if(json_flag) {
+                                        if(!json_first) {
+                                                fprintf(stdout, ",");
+                                        } else {
+                                                json_first = 0;
+                                        }
+                                        
+                                        fprintf(stdout, "{\"msg\":\"Subnet mask - %s\","
+                                                        "\"result\":\"info\","
+                                                        "\"result-type\":\"option\","
+                                                        "\"result-option\":\"subnetmask\","
+                                                        "\"result-subnetmask\":\"%s\"}",
+							get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)),
+							get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+                                } else {
+					fprintf(stdout, "Subnet mask - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2)));
+				}
 				break;
 
 			case DHCP_ROUTER:
 				for(tmp = 0; tmp < (*(dhopt_pointer_g + 1) / 4); tmp++) {
-					fprintf(stdout, "Router/gateway - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+					if(json_flag) {
+						if(!json_first) {
+							fprintf(stdout, ",");
+						} else {
+							json_first = 0;
+						}
+						
+						fprintf(stdout, "{\"msg\":\"Subnet mask - %s\","
+								"\"result\":\"info\","
+								"\"result-type\":\"option\","
+								"\"result-option\":\"router\","
+								"\"result-router\":\"%s\"}",
+								get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))),
+								get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+					} else {
+						fprintf(stdout, "Router/gateway - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+					}
 				}
 				break;
 
 			case DHCP_DNS:
 				for(tmp = 0; tmp < ((*(dhopt_pointer_g + 1)) / 4); tmp++) {
-					fprintf(stdout, "DNS server - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+					if(json_flag) {
+                                                if(!json_first) {
+                                                        fprintf(stdout, ",");
+                                                } else {
+                                                        json_first = 0;
+                                                }
+                                                
+                                                fprintf(stdout, "{\"msg\":\"DNS server - %s\","
+                                                                "\"result\":\"info\","
+                                                                "\"result-type\":\"option\","
+                                                                "\"result-option\":\"dns\","
+                                                                "\"result-router\":\"%s\"}",
+								get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))),
+								get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+                                        } else {
+						fprintf(stdout, "DNS server - %s\n", get_ip_str(*(u_int32_t *)(dhopt_pointer_g + 2 + (tmp * 4))));
+					}
 				}
 				break;
 
@@ -1147,13 +1391,55 @@ int print_dhinfo(int pkt_type)
 					memcpy(fqdn_client_name, dhopt_pointer_g + 5, size);
 					fqdn_client_name[size] = '\0';
 
-					fprintf(stdout, "FQDN Client name - %s\n", fqdn_client_name);
+					if(json_flag) {
+                                                if(!json_first) {
+                                                        fprintf(stdout, ",");
+                                                } else {
+                                                        json_first = 0;
+                                                }
+                                                
+                                                fprintf(stdout, "{\"msg\":\"FQDN Client name - %s\","
+                                                                "\"result\":\"info\","
+                                                                "\"result-type\":\"option\","
+                                                                "\"result-option\":\"fqdn-client\","
+                                                                "\"result-router\":\"%s\"}",
+								fqdn_client_name,
+								fqdn_client_name);
+                                        } else {
+						fprintf(stdout, "FQDN Client name - %s\n", fqdn_client_name);
+					}
 				}
                                 break;
 
                         default:
-				fprintf(stdout, "Option no - %d, option length - %d", *dhopt_pointer_g, *(dhopt_pointer_g + 1));
-                                print_dhoption((dhopt_pointer_g + 2),*(dhopt_pointer_g + 1));
+				if(json_flag) {
+					if(!json_first) {
+						fprintf(stdout, ",");
+					} else {
+						json_first = 0;
+					}
+					
+					fprintf(stdout, "{\"msg\":\"Option no - %d, option length - %d\","
+							"\"result\":\"info\","
+							"\"result-type\":\"option\","
+							"\"result-option\":\"option\","
+							"\"result-data\":\"",
+							*dhopt_pointer_g, *(dhopt_pointer_g + 1));
+					u_int8_t *buf = (dhopt_pointer_g + 2);
+						
+					int tmp;
+					for(tmp = 0; tmp < *(dhopt_pointer_g + 1); tmp++) {
+						fprintf(stdout, "%02X ", buf[tmp]);
+					}
+					
+					fprintf(stdout, "\","
+							"\"result-option-no\":\"%d\","
+							"\"result-option-len\":\"%d\"}",
+							*dhopt_pointer_g, *(dhopt_pointer_g + 1));
+				} else {
+					fprintf(stdout, "Option no - %d, option length - %d", *dhopt_pointer_g, *(dhopt_pointer_g + 1));
+                                	print_dhoption((dhopt_pointer_g + 2),*(dhopt_pointer_g + 1));
+				}
 		}
 
                 if (*(dhopt_pointer_g) == DHCP_PAD) {
@@ -1164,7 +1450,9 @@ int print_dhinfo(int pkt_type)
                 }
 	}
 
-	fprintf(stdout, "----------------------------------------------------------\n\n");
+	if(!json_flag) {
+		fprintf(stdout, "----------------------------------------------------------\n\n");
+	}
 	return 0;
 }
 
@@ -1226,10 +1514,22 @@ int log_dhinfo()
 
 	dh_file = fopen(dhmac_fname, "w");
 	if(dh_file == NULL) {
-		if (nagios_flag)
+		if (nagios_flag) {
 			fprintf(stdout, "CRITICAL: Error on opening file.");
-		else
+		} else if(json_flag) {
+			if(!json_first) {
+				fprintf(stdout, ",");
+			} else {
+				json_first = 0;
+			}
+
+			fprintf(stdout, "{\"msg\":\"Error on opening file.\","
+                                        "\"result\":\"error\","
+                                        "\"result-type\":\"file-open\"}]");
+		} else {
 			perror("Error on opening file.");
+		}
+
 		exit(2);
 	}
 	if(!vlan) {
