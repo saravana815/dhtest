@@ -1225,7 +1225,7 @@ int print_dhinfo(int pkt_type)
 				get_ip_str(dhcph_g->dhcp_sip));
 
 			if(dhcph_g->dhcp_gip) {
-				fprintf(stdout, "\",result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
+				fprintf(stdout, ",\"result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
 			}
 
 			fprintf(stdout, "}");
