@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
                                     //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
                                     int tmp, index = 0;
                                     for(tmp = 0; tmp < hex_length; tmp++) {
-                                        sscanf(&option_value[index], "%2X", &custom_dhcp_options[option_index].option_value[tmp]);
+                                        sscanf(&option_value[index], "%2X", (unsigned int*)&custom_dhcp_options[option_index].option_value[tmp]);
                                         index = index + 2;
                                     }
 
