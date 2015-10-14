@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
 					fprintf(stdout, "{\"msg\":\"Timeout reached: DISCOVER.\","
                                                 "\"result\":\"error\","
                                                 "\"error-type\":\"timeout\","
-						"\"error-subtype\":\"DISCOVER\""
+                                                "\"error-subtype\":\"DISCOVER\","
                                                 "\"error-msg\":\"Timeout reached: DISCOVER.\"}"
 						"]");
 				}
