@@ -722,7 +722,7 @@ int main(int argc, char *argv[])
 					json_first = 0;
 				}
 
-				fprintf(stdout, "{\"msg\":\"DHCP nack received - %s\","
+				fprintf(stdout, "{\"msg\":\"DHCP nack received\","
                                                 "\"result\":\"info\","
                                                 "\"result-type\":\"NACK\","
                                                 "\"result-value\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
