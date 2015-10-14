@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
 					fprintf(stdout, "{\"msg\":\"Timeout reached: DISCOVER.\","
                                                 "\"result\":\"error\","
                                                 "\"error-type\":\"timeout\","
-						"\"error-subtype\":\"DISCOVER\""
+                                                "\"error-subtype\":\"DISCOVER\","
                                                 "\"error-msg\":\"Timeout reached: DISCOVER.\"}"
 						"]");
 				}
@@ -673,7 +673,7 @@ int main(int argc, char *argv[])
 					fprintf(stdout, "{\"msg\":\"Timeout reached: REQUEST.\","
                                                 "\"result\":\"error\","
                                                 "\"error-type\":\"timeout\","
-                                                "\"error-subtype\":\"REQUEST\""
+                                                "\"error-subtype\":\"REQUEST\","
                                                 "\"error-msg\":\"Timeout reached: REQUEST.\"}"
                                                 "]");
 				} else {
@@ -788,7 +788,7 @@ int main(int argc, char *argv[])
 			fprintf(stdout, "{\"msg\":\"Listen timout reached.\","
 					"\"result\":\"error\","
 					"\"error-type\":\"timeout\","
-					"\"error-subtype\":\"listen\""
+					"\"error-subtype\":\"listen\","
 					"\"error-msg\":\"Listen timout reached.\"}");
 		}
 	}
