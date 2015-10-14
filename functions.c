@@ -1220,12 +1220,12 @@ int print_dhinfo(int pkt_type)
 				"\"result\":\"info\","
 				"\"result-type\":\"offer\","
 				"\"result-ip\":\"%s\","
-				"\"result-next-srv\":\"%s\",",
+				"\"result-next-srv\":\"%s\"",
 				get_ip_str(dhcph_g->dhcp_yip),
 				get_ip_str(dhcph_g->dhcp_sip));
 
 			if(dhcph_g->dhcp_gip) {
-				fprintf(stdout, "\"result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
+				fprintf(stdout, "\",result-relay-agent\":\"%s\"", get_ip_str(dhcph_g->dhcp_gip));
 			}
 
 			fprintf(stdout, "}");
