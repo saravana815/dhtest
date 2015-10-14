@@ -1154,7 +1154,7 @@ int check_packet(int pkt_type)
 						json_first = 0;
 					}
 
-					fprintf(stdout, "{\"msg\":\"Arp request received - %s\","
+					fprintf(stdout, "{\"msg\":\"Arp request received\","
                                                 "\"result\":\"success\","
                                                 "\"result-type\":\"arp-received\"}");
 				} else {
