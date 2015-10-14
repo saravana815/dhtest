@@ -70,8 +70,8 @@ u_int8_t unicast_flag = 0;
 u_int8_t nagios_flag = 0;
 u_int8_t json_flag = 0;
 u_int8_t json_first = 1;
-u_char *giaddr = "0.0.0.0";
-u_char *server_addr = "255.255.255.255";
+char *giaddr = "0.0.0.0";
+char *server_addr = "255.255.255.255";
 
 /* Pointers for all layer data structures */
 struct ethernet_hdr *eth_hg = { 0 };
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
                                 //format - option_no_dec,str|num|hex|ip,option_value
                                 
                                 u_int8_t option_no, option_type;
-                                u_char option_value[256] = { 0 };
+                                char option_value[256] = { 0 };
                                 u_int32_t option_value_num = { 0 }, option_value_ip = { 0 };
                                 int option_index = 0;
                                 int scanf_state;
@@ -344,7 +344,7 @@ int main(int argc, char *argv[])
                                     //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
                                     int tmp, index = 0;
                                     for(tmp = 0; tmp < hex_length; tmp++) {
-                                        sscanf(&option_value[index], "%2X", &custom_dhcp_options[option_index].option_value[tmp]);
+                                        sscanf(&option_value[index], "%2X", (unsigned int*)&custom_dhcp_options[option_index].option_value[tmp]);
                                         index = index + 2;
                                     }
 

@@ -460,6 +460,8 @@ int recv_packet(int pkt_type)
 		}
 		return LISTEN_TIMOUET;
 	}
+
+    return UNKNOWN_PACKET;
 }
 
 /* Debug function - Prints the buffer on HEX format */
@@ -1175,6 +1177,8 @@ int check_packet(int pkt_type)
 		}
 		return UNKNOWN_PACKET;
 	}
+    
+    return UNKNOWN_PACKET;
 }
 
 /*
