@@ -43,6 +43,9 @@ int log_dhinfo();		/* Logs DHCP IP info to log file */
 int get_dhinfo();		/* Reads log file for mac, ip, serv_ip info */
 char *get_ip_str(u_int32_t ip);  /* Convert in_addr to string */
 u_int32_t get_interface_address(); /* Return the IP address of the interface. */
+int get_if_mac_address(char *if_name, uint8_t *mac_address);
+char *mac2str(uint8_t *mac_addr);
+int str2mac(char *str, uint8_t *mac_addr);
 
 int set_serv_id_opt50();	/* Sets the server_ip and option50 ip */
 /*

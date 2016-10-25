@@ -68,6 +68,7 @@ struct icmp_hdr *icmp_hg;
 
 extern u_char dhmac[ETHER_ADDR_LEN];
 extern u_char dmac[ETHER_ADDR_LEN];
+extern u_char iface_mac[ETHER_ADDR_LEN];
 
 extern char dhmac_fname[20];
 extern char iface_name[30];
@@ -793,12 +794,12 @@ int build_dhpacket(int pkt_type)
 		if(vlan == 0) {
 			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)dhcp_packet_disc;
 			memcpy(ethhdr->ether_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(ethhdr->ether_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
 			ethhdr->ether_type = htons(ETHERTYPE_IP);
 		} else {
 			struct vlan_hdr *vhdr = (struct vlan_hdr *)dhcp_packet_disc;
 			memcpy(vhdr->vlan_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(vhdr->vlan_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
 			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_IP);
@@ -866,12 +867,12 @@ int build_dhpacket(int pkt_type)
 		if(vlan == 0) {
 			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)dhcp_packet_request;
 			memcpy(ethhdr->ether_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(ethhdr->ether_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
 			ethhdr->ether_type = htons(ETHERTYPE_IP);
 		} else {
 			struct vlan_hdr *vhdr = (struct vlan_hdr *)dhcp_packet_request;
 			memcpy(vhdr->vlan_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(vhdr->vlan_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
 			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_IP);
@@ -939,12 +940,12 @@ int build_dhpacket(int pkt_type)
 		if(vlan == 0) {
 			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)dhcp_packet_release;
 			memcpy(ethhdr->ether_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(ethhdr->ether_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
 			ethhdr->ether_type = htons(ETHERTYPE_IP);
 		} else {
 			struct vlan_hdr *vhdr = (struct vlan_hdr *)dhcp_packet_release;
 			memcpy(vhdr->vlan_dhost, dmac, ETHER_ADDR_LEN);
-			memcpy(vhdr->vlan_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
 			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_IP);
@@ -1016,12 +1017,12 @@ int build_packet(int pkt_type)
 		if(vlan == 0) {
 			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)arp_icmp_reply;
 			memcpy(ethhdr->ether_dhost, eth_hg->ether_shost, ETHER_ADDR_LEN);
-			memcpy(ethhdr->ether_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
 			ethhdr->ether_type = htons(ETHERTYPE_ARP);
 		} else {
 			struct vlan_hdr *vhdr = (struct vlan_hdr *)arp_icmp_reply;
 			memcpy(vhdr->vlan_dhost, vlan_hg->vlan_shost, ETHER_ADDR_LEN);
-			memcpy(vhdr->vlan_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
 			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_ARP);
@@ -1034,7 +1035,7 @@ int build_packet(int pkt_type)
 		arph->ar_op = htons(ARPOP_REPLY);
 		u_int32_t ip_addr_tmp;
 		ip_addr_tmp = htonl(ip_address);
-		memcpy(arph->sender_mac, dhmac, ETHER_ADDR_LEN);
+		memcpy(arph->sender_mac, iface_mac, ETHER_ADDR_LEN);
 		memcpy(arph->sender_ip, (u_char *)&ip_addr_tmp, ETHER_ADDR_LEN);
 		memcpy(arph->target_mac, arp_hg->sender_mac, ETHER_ADDR_LEN);
 		memcpy(arph->target_ip, arp_hg->sender_ip, IP_ADDR_LEN);
@@ -1043,12 +1044,12 @@ int build_packet(int pkt_type)
 		if(vlan == 0) {
 			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)arp_icmp_reply;
 			memcpy(ethhdr->ether_dhost, eth_hg->ether_shost, ETHER_ADDR_LEN);
-			memcpy(ethhdr->ether_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
 			ethhdr->ether_type = htons(ETHERTYPE_IP);
 		} else {
 			struct vlan_hdr *vhdr = (struct vlan_hdr *)arp_icmp_reply;
 			memcpy(vhdr->vlan_dhost, vlan_hg->vlan_shost, ETHER_ADDR_LEN);
-			memcpy(vhdr->vlan_shost, dhmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
 			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
 			vhdr->vlan_priority_c_vid = htons(vlan);
 			vhdr->vlan_len = htons(ETHERTYPE_IP);
@@ -1673,4 +1674,79 @@ char *get_ip_str(u_int32_t ip)
 	inet_ntop(AF_INET, ((struct sockaddr_in *) &src),
 			ip_str, sizeof(ip_str));
 	return ip_str;
+}
+
+
+/*
+  Return the mac address of the selected interface
+  User must allocate the buffer for store the address
+ */
+int get_if_mac_address(char *if_name, uint8_t *mac_address)
+{
+  struct ifreq ifr;
+  int sockfd;
+
+  if(!mac_address)
+    {
+      fprintf(stderr,"Invalid mac address buffer\n");
+      return 1;
+    }
+
+  if((sockfd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP))) < 0)
+    {
+      perror("Error opening socket:");
+      return SOCKET_ERR;
+    }
+
+  // get the mac address ot the interface
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
+  if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) != 0)
+    {
+      perror("Error getting interface's MAC address:");
+      close(sockfd);
+      return 1;
+    }
+
+  memcpy(mac_address, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+
+  close(sockfd);
+  return 0;
+}
+
+
+char *mac2str(uint8_t *mac_addr)
+{
+  static char str[25];
+
+  snprintf(str, 25, "%02x:%02x:%02x:%02x:%02x:%02x",
+	   mac_addr[0], mac_addr[1], mac_addr[2],
+	   mac_addr[3], mac_addr[4], mac_addr[5]);
+
+  return str;
+}
+
+
+int str2mac(char *str, uint8_t *mac_addr)
+{
+  char local_mac_str[25];
+
+  // check if both required parameters are ok
+  // may be an assert is better ?
+  if(!str || !mac_addr)
+    return 1;
+
+  strncpy(local_mac_str, str, 25);
+
+  // replace semicolons with end of string character
+  local_mac_str[2] =  local_mac_str[5] =  local_mac_str[8] =  local_mac_str[11] =  local_mac_str[14] = 0x00;
+
+  mac_addr[0] = (uint8_t)strtol(local_mac_str,NULL,16);
+  mac_addr[1] = (uint8_t)strtol(local_mac_str+3,NULL,16);
+  mac_addr[2] = (uint8_t)strtol(local_mac_str+6,NULL,16);
+  mac_addr[3] = (uint8_t)strtol(local_mac_str+9,NULL,16);
+  mac_addr[4] = (uint8_t)strtol(local_mac_str+12,NULL,16);
+  mac_addr[5] = (uint8_t)strtol(local_mac_str+15,NULL,16);
+
+  return 0;
 }
