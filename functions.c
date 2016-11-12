@@ -1092,7 +1092,7 @@ int check_packet(int pkt_type)
 {
 	if(pkt_type == DHCP_MSGOFFER && vlan != 0) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
-		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
+		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_OFFR_RCVD;
 			} else {
@@ -1103,7 +1103,7 @@ int check_packet(int pkt_type)
 		}
 	} else if (pkt_type == DHCP_MSGACK && vlan != 0){
 		map_all_layer_ptr(DHCP_MSGACK);
-		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK)== vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
+		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK)== vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_ACK_RCVD;
 			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid){
@@ -1117,7 +1117,7 @@ int check_packet(int pkt_type)
 		}
 	} else if (pkt_type == DHCP_MSGOFFER) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
-		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
+		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_OFFR_RCVD;
 			} else {
@@ -1129,7 +1129,7 @@ int check_packet(int pkt_type)
 
 	} else if (pkt_type == DHCP_MSGACK) {
 		map_all_layer_ptr(DHCP_MSGACK);
-		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && uh_g->dest == htons(port + 1)) {
+		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
 			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
 				return DHCP_ACK_RCVD;
 			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
