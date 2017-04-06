@@ -1090,27 +1090,52 @@ int build_packet(int pkt_type)
  */
 int check_packet(int pkt_type) 
 {
+
+	u_int8_t *dhopt_pointer_tmp;
 	if(pkt_type == DHCP_MSGOFFER && vlan != 0) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
 		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK) == vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
-			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
-				return DHCP_OFFR_RCVD;
-			} else {
-				return UNKNOWN_PACKET;
+			dhopt_pointer_tmp = dhopt_pointer_g;
+			while(*(dhopt_pointer_tmp) != DHCP_END) {
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_OFFR_RCVD;
+					break;
+				}
+
+				if (*(dhopt_pointer_tmp) == DHCP_PAD) {
+					/* DHCP_PAD option - increment dhopt_pointer_tmp by one */
+					dhopt_pointer_tmp = dhopt_pointer_tmp + 1;
+				} else {
+					dhopt_pointer_tmp = dhopt_pointer_tmp + *(dhopt_pointer_tmp + 1) + 2;
+				}
 			}
+			return UNKNOWN_PACKET;
+
 		} else {
 			return UNKNOWN_PACKET;
 		}
 	} else if (pkt_type == DHCP_MSGACK && vlan != 0){
 		map_all_layer_ptr(DHCP_MSGACK);
 		if((ntohs(vlan_hg->vlan_priority_c_vid) & VLAN_VIDMASK)== vlan && ntohs(vlan_hg->vlan_tpi) == ETHERTYPE_VLAN && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
-			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
-				return DHCP_ACK_RCVD;
-			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid){
-				return DHCP_NAK_RCVD;
-			} else {
-				return UNKNOWN_PACKET;
+			dhopt_pointer_tmp = dhopt_pointer_g;
+			while(*(dhopt_pointer_tmp) != DHCP_END) {
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_ACK_RCVD;
+					break;
+				}
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_NAK_RCVD;
+					break;
+				}
+
+				if (*(dhopt_pointer_tmp) == DHCP_PAD) {
+					/* DHCP_PAD option - increment dhopt_pointer_tmp by one */
+					dhopt_pointer_tmp = dhopt_pointer_tmp + 1;
+				} else {
+					dhopt_pointer_tmp = dhopt_pointer_tmp + *(dhopt_pointer_tmp + 1) + 2;
+				}
 			}
+			return UNKNOWN_PACKET;
 
 		} else {
 			return UNKNOWN_PACKET;
@@ -1118,11 +1143,21 @@ int check_packet(int pkt_type)
 	} else if (pkt_type == DHCP_MSGOFFER) {
 		map_all_layer_ptr(DHCP_MSGOFFER);
 		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
-			if(*(dhopt_pointer_g + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
-				return DHCP_OFFR_RCVD;
-			} else {
-				return UNKNOWN_PACKET;
+			dhopt_pointer_tmp = dhopt_pointer_g;
+			while(*(dhopt_pointer_tmp) != DHCP_END) {
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGOFFER && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_OFFR_RCVD;
+					break;
+				}
+
+				if (*(dhopt_pointer_tmp) == DHCP_PAD) {
+					/* DHCP_PAD option - increment dhopt_pointer_tmp by one */
+					dhopt_pointer_tmp = dhopt_pointer_tmp + 1;
+				} else {
+					dhopt_pointer_tmp = dhopt_pointer_tmp + *(dhopt_pointer_tmp + 1) + 2;
+				}
 			}
+			return UNKNOWN_PACKET;
 		} else {
 			return UNKNOWN_PACKET;
 		}
@@ -1130,13 +1165,25 @@ int check_packet(int pkt_type)
 	} else if (pkt_type == DHCP_MSGACK) {
 		map_all_layer_ptr(DHCP_MSGACK);
 		if(eth_hg->ether_type == htons(ETHERTYPE_IP) && iph_g->protocol == 17 && uh_g->source == htons(port) && (uh_g->dest == htons(port + 1) || uh_g->dest == htons(port))) {
-			if(*(dhopt_pointer_g + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
-				return DHCP_ACK_RCVD;
-			} else if(*(dhopt_pointer_g + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
-				return DHCP_NAK_RCVD;
-			} else {
-				return UNKNOWN_PACKET;
+			dhopt_pointer_tmp = dhopt_pointer_g;
+			while(*(dhopt_pointer_tmp) != DHCP_END) {
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_ACK_RCVD;
+					break;
+				}
+				if( *(dhopt_pointer_tmp) == DHCP_MESSAGETYPE && *(dhopt_pointer_tmp + 2) == DHCP_MSGNACK && htonl(dhcph_g->dhcp_xid) == dhcp_xid) {
+					return DHCP_NAK_RCVD;
+					break;
+				}
+
+				if (*(dhopt_pointer_tmp) == DHCP_PAD) {
+					/* DHCP_PAD option - increment dhopt_pointer_tmp by one */
+					dhopt_pointer_tmp = dhopt_pointer_tmp + 1;
+				} else {
+					dhopt_pointer_tmp = dhopt_pointer_tmp + *(dhopt_pointer_tmp + 1) + 2;
+				}
 			}
+			return UNKNOWN_PACKET;
 		} else {
 			return UNKNOWN_PACKET;
 		}
