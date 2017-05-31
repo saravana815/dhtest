@@ -1624,7 +1624,7 @@ int get_dhinfo()
 	u_char aux_dmac[ETHER_ADDR_LEN];
 	char mac_tmp[20], acq_ip_tmp[20], serv_id_tmp[20], dmac_tmp[20], ip_listen_tmp[10];
 	pid_t dh_pid;
-	dh_file = fopen(dhmac_fname, "w");
+	dh_file = fopen(dhmac_fname, "r");
 	if(dh_file == NULL) {
 		return ERR_FILE_OPEN;
 	}
