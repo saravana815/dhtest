@@ -40,6 +40,7 @@ u_char dhopt_buff[500] = { 0 };
 u_int32_t dhopt_size = { 0 };
 u_char dhmac[ETHER_ADDR_LEN] = { 0 };
 u_char dmac[ETHER_ADDR_LEN];
+u_char iface_mac[ETHER_ADDR_LEN] = { 0 };
 
 /* 
 * For Custom DHCP options
@@ -53,6 +54,7 @@ char dhmac_fname[20];
 char iface_name[30] = { 0 };
 char ip_str[128];
 u_int8_t dhmac_flag = 0;
+u_int8_t strict_mac_flag = 0;
 u_int32_t server_id = { 0 }, option50_ip = { 0 };
 u_int32_t dhcp_xid = 0;  
 u_int16_t bcast_flag = 0; /* DHCP broadcast flag */ 
@@ -106,6 +108,7 @@ void print_help(char *cmd)
 {
 	fprintf(stdout, "Usage: %s [ options ]\n", cmd);
 	fprintf(stdout, "  -m mac_address\n");
+	fprintf(stdout, "  -N\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
@@ -147,6 +150,7 @@ int main(int argc, char *argv[])
 	int option_index = 0;
 	static struct option long_options[] = {
 		{ "mac", required_argument, 0, 'm' },
+		{ "strict-mac", no_argument, 0, 'N' },
 		{ "interface", required_argument, 0, 'i' },
 		{ "vlan", required_argument, 0, 'v' },
 		{ "dhcp_xid", required_argument, 0, 'x' },
@@ -177,7 +181,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpansju::T:P:g:S:I:o:k:L:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsju::T:P:g:S:I:o:k:L:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -208,6 +212,10 @@ int main(int argc, char *argv[])
 					exit(2);
 				}
 				strncpy(iface_name, optarg, 29);
+				break;
+
+		        case 'N':
+			        strict_mac_flag = 1;
 				break;
 
 			case 'v':
@@ -455,9 +463,32 @@ int main(int argc, char *argv[])
 		get_tmp++;
 	}	
 
-	if(!dhmac_flag) {
+	if(!*iface_name) {
 		print_help(argv[0]);
 		exit(2);
+	}
+
+	if(!dhmac_flag || strict_mac_flag) {
+	  /* obtain the MAC address of the interface we're
+	     transmitting on */
+	  if(get_if_mac_address(iface_name, iface_mac) != 0)
+	    exit(2);
+
+	  if (!dhmac_flag)
+	       memcpy (dhmac, iface_mac, ETHER_ADDR_LEN);
+
+	  if (!strict_mac_flag)
+	       memcpy (iface_mac, dhmac, ETHER_ADDR_LEN);
+
+	  if (verbose)
+	    {
+	      char *str[25];
+	      fprintf (stderr, "Using Ethernet source addr: %s\n", mac2str (iface_mac));
+	      fprintf (stderr, "Using DHCP chaddr: %s\n", mac2str (dhmac));
+	    }
+
+	  /** build the file name used fot saving lease informations */
+	  strcpy(dhmac_fname, mac2str(dhmac));
 	}
 
 	if(json_flag) {
