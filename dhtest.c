@@ -464,6 +464,7 @@ int main(int argc, char *argv[])
 	}	
 
 	if(!*iface_name) {
+		fprintf(stderr, "No interface is specified.\n\n");
 		print_help(argv[0]);
 		exit(2);
 	}
