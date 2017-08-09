@@ -489,7 +489,10 @@ int main(int argc, char *argv[])
 
 	  /** build the file name used fot saving lease informations */
 	  strcpy(dhmac_fname, mac2str(dhmac));
-	}
+	} else {
+    /* dhmac_flag is set and strict_mac_flag is not set */
+    memcpy (iface_mac, dhmac, ETHER_ADDR_LEN);
+  }
 
 	if(json_flag) {
 		fprintf(stdout, "[");
