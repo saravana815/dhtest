@@ -108,7 +108,7 @@ void print_help(char *cmd)
 {
 	fprintf(stdout, "Usage: %s [ options ]\n", cmd);
 	fprintf(stdout, "  -m mac_address\n");
-	fprintf(stdout, "  -N\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
+	fprintf(stdout, "  -N\t\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
@@ -464,7 +464,7 @@ int main(int argc, char *argv[])
 	}	
 
 	if(!*iface_name) {
-		print_help(argv[0]);
+		fprintf(stdout, "  -i interface is mandatory option\n");
 		exit(2);
 	}
 
@@ -490,8 +490,8 @@ int main(int argc, char *argv[])
 	  /** build the file name used fot saving lease informations */
 	  strcpy(dhmac_fname, mac2str(dhmac));
 	} else {
-    /* dhmac_flag is set and strict_mac_flag is not set */
-    memcpy (iface_mac, dhmac, ETHER_ADDR_LEN);
+          /* dhmac_flag is set and strict_mac_flag is not set */
+          memcpy (iface_mac, dhmac, ETHER_ADDR_LEN);
   }
 
 	if(json_flag) {

@@ -28,7 +28,7 @@ def write_log(msg):
         f.close
 
 def run_dhtest(mac, arg_list, search_output):
-    cmd = "./dhtest -m " + mac + arg_list
+    cmd = "./dhtest -i eth0 -m " + mac + arg_list
     print_log("=============================================================")
     print_log("Running command ", cmd)
     out = commands.getoutput(cmd)
