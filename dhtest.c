@@ -22,8 +22,8 @@ int sock_packet, iface = 2;	/* Socket descripter & transmit interface index */
 struct sockaddr_ll ll = { 0 };	/* Socket address structure */
 u_int16_t vlan = 0;		
 u_int8_t l3_tos = 0;		
-u_int16_t l2_hdr_size = 14;	
-u_int16_t l3_hdr_size = 20;	
+u_int16_t l2_hdr_size = 14;
+u_int16_t l3_hdr_size = 20;
 u_int16_t l4_hdr_size = 8;	
 u_int16_t dhcp_hdr_size = sizeof(struct dhcpv4_hdr);
 
@@ -35,6 +35,7 @@ u_char dhcp_packet_offer[1518] = { 0 };
 u_char dhcp_packet_request[1518] = { 0 };
 u_char dhcp_packet_ack[1518] = { 0 };
 u_char dhcp_packet_release[1518] = { 0 };
+u_char dhcp_packet_decline[1518] = { 0 };
 
 u_char dhopt_buff[500] = { 0 };
 u_int32_t dhopt_size = { 0 };
@@ -71,6 +72,7 @@ u_int32_t port = 67;
 u_int8_t unicast_flag = 0;
 u_int8_t nagios_flag = 0;
 u_int8_t json_flag = 0;
+u_int8_t dhcp_decline_flag = 0;
 u_int8_t json_first = 1;
 char *giaddr = "0.0.0.0";
 char *server_addr = "255.255.255.255";
@@ -133,8 +135,9 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -a, --nagios\t\t\t\t# Nagios output format. \n");
 	fprintf(stdout, "  -S, --server\t\t[ address ]\t# Use server address instead of 255.255.255.255\n");
 	fprintf(stdout, "  -j, --json\t\t\t\t# Set the output format to json\n");
+	fprintf(stdout, "  -D, --decline\t\t\t\t# Declines obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -V, --verbose\t\t\t\t# Prints DHCP offer and ack details\n");
-	fprintf(stdout, "  dhtest version 1.4\n");
+	fprintf(stdout, "  dhtest version 1.5\n");
 }
 
 
@@ -176,12 +179,13 @@ int main(int argc, char *argv[])
 		{ "server", required_argument, 0, 'S'},
 		{ "release", no_argument, 0, 'r'},
 		{ "json", no_argument, 0, 'j'},
+		{ "decline", no_argument, 0, 'D'},
 		{ 0, 0, 0, 0 }
 	};
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsju::T:P:g:S:I:o:k:L:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -457,6 +461,10 @@ int main(int argc, char *argv[])
 				json_flag = 1;
 				break;
 
+			case 'D':
+				dhcp_decline_flag = 1;
+				break;
+
 			default:
 				exit(2);
 		}
@@ -573,6 +581,52 @@ int main(int argc, char *argv[])
 		close_socket();
 		return 0; 
 	}
+
+	/*
+	 * If DHCP DECLINE flag is set, send DHCP DECLINE packet
+	 * and exit. get_dhinfo parses the DHCP info from log file
+	 * and unlinks it from the system
+	 */
+	if(dhcp_decline_flag) {
+		if(get_dhinfo() == ERR_FILE_OPEN) {
+			if (nagios_flag) {
+				fprintf(stdout, "CRITICAL: Error on opening DHCP info file.");
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"Error on opening DHCP info file.\","
+						"\"result\":\"error\","
+						"\"error-type\":\"info-file\","
+						"\"error-msg\":\"Error on opening DHCP info file.\"}"
+						"]");
+			} else {
+				fprintf(stdout, "Error on opening DHCP info file\n");
+				fprintf(stdout, "Release the DHCP IP after acquiring\n");
+			}
+			exit(2);
+		}
+		build_option53(DHCP_MSGDECLINE); /* Option53 DHCP decline */
+		if(hostname_flag) {
+			build_option12_hostname();
+		}
+		if(fqdn_flag) {
+			build_option81_fqdn();
+		}
+		build_option54();		 /* Server id */
+		build_option50();		 /* Requested IP Address */
+		build_option60_vci();	 /* Vendor Class Identifier */
+		build_optioneof();		 /* End of option */
+		build_dhpacket(DHCP_MSGDECLINE); /* Build DHCP release packet */
+		send_packet(DHCP_MSGDECLINE);	 /* Send DHCP release packet */
+		clear_promisc();		 /* Clear the promiscuous mode */
+		close_socket();
+		return 0; 
+	}
+
 	if(timeout) {
 		time_last = time(NULL);
 	}
