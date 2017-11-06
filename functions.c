@@ -34,6 +34,7 @@ extern u_char dhcp_packet_offer[1514];
 extern u_char dhcp_packet_request[1514];
 extern u_char dhcp_packet_ack[1514];
 extern u_char dhcp_packet_release[1514];
+extern u_char dhcp_packet_decline[1514];
 
 extern u_int8_t dhopt_buff[500];
 extern u_int32_t dhopt_size;
@@ -254,6 +255,13 @@ int send_packet(int pkt_type)
 				0,\
 				(struct sockaddr *) &ll,\
 				sizeof(ll));
+	} else if(pkt_type == DHCP_MSGDECLINE) {
+		ret = sendto(sock_packet,\
+				dhcp_packet_decline,\
+				(l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size + dhopt_size),\
+				0,\
+				(struct sockaddr *) &ll,\
+				sizeof(ll));
 	} else if(pkt_type == ARP_SEND) {
 		ret = sendto(sock_packet,\
 				arp_icmp_reply,\
@@ -354,6 +362,28 @@ int send_packet(int pkt_type)
                                         "\"result\":\"success\","
                                         "\"result-type\":\"sent\","
                                         "\"result-subtype\":\"RELEASE\","
+                                        "\"result-mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
+                                        "}",    
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5],
+                                        dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
+			}
+		} else if (pkt_type == DHCP_MSGDECLINE) { 
+			if (!nagios_flag && !json_flag) {
+				fprintf(stdout, "DHCP decline sent\t - ");
+				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
+					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+			} else if(json_flag) {
+				if(!json_first) {
+					fprintf(stdout, ",");
+				} else {
+					json_first = 0;
+				}
+
+				fprintf(stdout, "{\"msg\":\"DHCP decline sent - Client MAC: "
+                                        "%02x:%02x:%02x:%02x:%02x:%02x\","
+                                        "\"result\":\"success\","
+                                        "\"result-type\":\"sent\","
+                                        "\"result-subtype\":\"DECLINE\","
                                         "\"result-mac\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
                                         "}",    
                                         dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5],
@@ -601,6 +631,15 @@ int build_option53(int msg_type)
 		u_int8_t msgtype = DHCP_MESSAGETYPE;
 		u_int8_t msglen = 1;
 		u_int8_t msg = DHCP_MSGRELEASE;
+
+		memcpy(dhopt_buff, &msgtype, 1);
+                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
+                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
+		dhopt_size = dhopt_size + 3; 
+	} else if(msg_type == DHCP_MSGDECLINE) {
+		u_int8_t msgtype = DHCP_MESSAGETYPE;
+		u_int8_t msglen = 1;
+		u_int8_t msg = DHCP_MSGDECLINE;
 
 		memcpy(dhopt_buff, &msgtype, 1);
                 strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
@@ -1003,6 +1042,74 @@ int build_dhpacket(int pkt_type)
 		/* UDP checksum is done here */
 		uh->check = l4_sum((u_int16_t *) (dhcp_packet_release + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len)); 
 	}
+
+	if(pkt_type == DHCP_MSGDECLINE) {
+		if(vlan == 0) {
+			struct ethernet_hdr *ethhdr = (struct ethernet_hdr *)dhcp_packet_decline;
+			memcpy(ethhdr->ether_dhost, dmac, ETHER_ADDR_LEN);
+			memcpy(ethhdr->ether_shost, iface_mac, ETHER_ADDR_LEN);
+			ethhdr->ether_type = htons(ETHERTYPE_IP);
+		} else {
+			struct vlan_hdr *vhdr = (struct vlan_hdr *)dhcp_packet_decline;
+			memcpy(vhdr->vlan_dhost, dmac, ETHER_ADDR_LEN);
+			memcpy(vhdr->vlan_shost, iface_mac, ETHER_ADDR_LEN);
+			vhdr->vlan_tpi = htons(ETHERTYPE_VLAN);
+			vhdr->vlan_priority_c_vid = htons(vlan);
+			vhdr->vlan_len = htons(ETHERTYPE_IP);
+		}
+
+		if (padding_flag && dhcp_packet_size < MINIMUM_PACKET_SIZE) {
+			memset(dhopt_buff + dhopt_size, 0, MINIMUM_PACKET_SIZE - dhcp_packet_size);
+			dhopt_size += MINIMUM_PACKET_SIZE - dhcp_packet_size;
+		}
+
+		struct iphdr *iph = (struct iphdr *)(dhcp_packet_decline + l2_hdr_size);
+		iph->version = 4;
+		iph->ihl = 5;
+		iph->tos = l3_tos;
+		iph->tot_len = htons(l3_hdr_size +  l4_hdr_size + dhcp_hdr_size + dhopt_size);  
+		iph->id = 0;
+		iph->frag_off = 0;
+		iph->ttl = 64;
+		iph->protocol = 17;
+		iph->check = 0; // Filled later;
+		iph->saddr = inet_addr("0.0.0.0");
+		iph->daddr = inet_addr("255.255.255.255");
+		iph->check = ipchksum((u_int16_t *)(dhcp_packet_decline + l2_hdr_size), iph->ihl << 1);
+
+		struct udphdr *uh = (struct udphdr *) (dhcp_packet_decline + l2_hdr_size + l3_hdr_size);
+		uh->source = htons(port + 1);
+		uh->dest = htons(port);
+		u_int16_t l4_proto = 17;
+		u_int16_t l4_len = (l4_hdr_size + dhcp_hdr_size + dhopt_size);
+		uh->len = htons(l4_len);
+		uh->check = 0; /* UDP checksum will be done after dhcp header*/
+
+		struct dhcpv4_hdr *dhpointer = (struct dhcpv4_hdr *)(dhcp_packet_decline + l2_hdr_size + l3_hdr_size + l4_hdr_size);
+		dhpointer->dhcp_opcode = DHCP_REQUEST;
+		dhpointer->dhcp_htype = ARPHRD_ETHER;
+		dhpointer->dhcp_hlen = ETHER_ADDR_LEN;
+		dhpointer->dhcp_hopcount = 0;
+		dhpointer->dhcp_xid = htonl(dhcp_xid);
+		dhpointer->dhcp_secs = 0;
+		dhpointer->dhcp_flags = bcast_flag;
+		dhpointer->dhcp_cip = 0;
+		dhpointer->dhcp_yip = 0;
+		dhpointer->dhcp_sip = 0;
+		dhpointer->dhcp_gip = inet_addr((const char *) giaddr);
+		memcpy(dhpointer->dhcp_chaddr, dhmac, ETHER_ADDR_LEN);
+		/*dhpointer->dhcp_sname 
+		  dhpointer->dhcp_file*/
+		dhpointer->dhcp_magic = htonl(DHCP_MAGIC);
+
+		/* DHCP option buffer is copied here to DHCP packet */
+		u_char *dhopt_pointer = (u_char *)(dhcp_packet_decline + l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size);
+		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
+
+		/* UDP checksum is done here */
+		uh->check = l4_sum((u_int16_t *) (dhcp_packet_decline + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len)); 
+	}
+
         return 0;
 }
 
@@ -1617,12 +1724,12 @@ int log_dhinfo()
 
 /*
  * Takes the DHCP info from log file and removes it(unlinks it)
- * Used for DHCP release
+ * Used for DHCP release / DHCP decline
  */
 int get_dhinfo()
 {
 	FILE *dh_file;
-	u_char aux_dmac[ETHER_ADDR_LEN];
+	u_char aux_dmac[ETHER_ADDR_LEN+3];  //[Fix for Seg Fault] @inov8shn - add a few extra chars to this buffer, since fscanf("%2X") below returns a u_int32_t, and was triggering a Segmentation Fault when run for last byte read (&aux_dmac[5]).
 	char mac_tmp[20], acq_ip_tmp[20], serv_id_tmp[20], dmac_tmp[20], ip_listen_tmp[10];
 	pid_t dh_pid;
 	dh_file = fopen(dhmac_fname, "r");
@@ -1631,8 +1738,8 @@ int get_dhinfo()
 	}
 	fscanf(dh_file, "Client_mac: %s\nAcquired_ip: %s\nServer_id: %s\n\
 			Host_mac: %2X:%2X:%2X:%2X:%2X:%2X\nIP_listen: %s Pid: %d", mac_tmp, acq_ip_tmp, serv_id_tmp, \
-			(u_int32_t *) &aux_dmac[0], (u_int32_t *) &aux_dmac[1], (u_int32_t *) &aux_dmac[2],
-			(u_int32_t *) &aux_dmac[3], (u_int32_t *) &aux_dmac[4], (u_int32_t *) &aux_dmac[5],
+			(u_int32_t *) &aux_dmac[0], (u_int32_t *) &aux_dmac[1], (u_int32_t *) &aux_dmac[2], \
+			(u_int32_t *) &aux_dmac[3], (u_int32_t *) &aux_dmac[4], (u_int32_t *) &aux_dmac[5], \
 			ip_listen_tmp, &dh_pid);
 	memcpy(dmac, aux_dmac, sizeof(dmac));
 	option50_ip = inet_addr(acq_ip_tmp);

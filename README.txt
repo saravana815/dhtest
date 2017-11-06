@@ -23,6 +23,13 @@
         [sargandh@CentOS dhtest-master]$ ls -lh dhtest
         -rwxrwxr-x 1 sargandh sargandh 38K Mar 13 10:47 dhtest
 
+  dhtest 1.5 - new 1.5 features supported
+  -----------------------------------------
+  
+    * Add option to send DHCP DECLINE packets ('-D' flag)
+    * Fix potential Segmentation Fault in get_dhinfo() function
+
+
   dhtest 1.4 - till 1.4 features supported
   -----------------------------------------
   
@@ -33,14 +40,14 @@
     * DHCP option 50 - Requested IP
     * DHCP option 60 - Vendor Class Identifier
     * Binding obtained IP for a default timeout of 3600 seconds
-    * Support of bind timout with -k flag on command line
+    * Support of bind timeout with -k flag on command line
     * Added DHCP option 51 - Requested lease time from server
     * Added DHCP option 12 - Hostname
     * Added DHCP option 81 - Fqdn
     * Option to send in unicast mode.
     * Option to output for nagios.
     * Option to change port, patch by Alan Dekok.
-    * Custom option support - Allows packing of any dhcp option in number/string/hex formart
+    * Custom option support - Allows packing of any dhcp option in number/string/hex format
 
   License
   ---------
