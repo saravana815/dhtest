@@ -576,31 +576,26 @@ u_int16_t icmpchksum(u_int16_t *buff, int words)
  */
 u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dstaddr, u_int16_t proto, u_int16_t len) 
 {
-	unsigned int sum, i, last_word = 0;
+	unsigned int i, last_word;
+	uint32_t sum;
 
 	/* Checksum enhancement - Support for odd byte packets */
 	if((htons(len) % 2) == 1) {
 		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
 		last_word = (htons(last_word) << 8);
-		sum = 0;
-		for(i = 0;i < words; i++){
-			sum = sum + *(buff + i);
-		}
-		sum = sum + last_word;
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
 	} else {
 		/* Original checksum function */
-		sum = 0;
-		for(i = 0;i < words; i++){
-			sum = sum + *(buff + i);
-		}
-
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
+		last_word = 0;
 	}
+
+	sum = 0;
+	for(i = 0;i < words; i++){
+		sum = sum + *(buff + i);
+	}
+	sum = sum + last_word;
+	sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
+	sum = (sum >> 16) + sum;
+	return ~sum;
 }
 
 /*
