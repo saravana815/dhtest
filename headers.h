@@ -314,6 +314,7 @@ struct custom_dhcp_option_hdr
 #define ARP_SEND		13
 #define ICMP_SEND		14
 #define LISTEN_TIMOUET	 	15
+#define ERR_FILE_FORMAT		16
 
 
 /*

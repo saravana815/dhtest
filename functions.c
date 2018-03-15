@@ -93,7 +93,6 @@ extern u_int32_t listen_timeout;
 
 int open_socket()
 {
-	int sock_new, non_block, tmp;
 	sock_packet = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	if(sock_packet < 0) {
 		perror("--Error on creating the socket--");
@@ -233,7 +232,7 @@ u_int32_t get_interface_address()
  */
 int send_packet(int pkt_type)
 {
-	int ret;
+	int ret = -1;
 	if(pkt_type == DHCP_MSGDISCOVER) {
 		ret = sendto(sock_packet,\
 				dhcp_packet_disc,\
@@ -400,7 +399,7 @@ int send_packet(int pkt_type)
  */
 int recv_packet(int pkt_type) 
 {
-	int ret, sock_len, retval, chk_pkt_state, tmp = 0;
+	int ret = -1, sock_len, retval, chk_pkt_state;
 	fd_set read_fd;
 	struct timeval tval;
 	tval.tv_sec = 5; 
@@ -1730,17 +1729,21 @@ int get_dhinfo()
 {
 	FILE *dh_file;
 	u_char aux_dmac[ETHER_ADDR_LEN+3];  //[Fix for Seg Fault] @inov8shn - add a few extra chars to this buffer, since fscanf("%2X") below returns a u_int32_t, and was triggering a Segmentation Fault when run for last byte read (&aux_dmac[5]).
-	char mac_tmp[20], acq_ip_tmp[20], serv_id_tmp[20], dmac_tmp[20], ip_listen_tmp[10];
+	char mac_tmp[20], acq_ip_tmp[20], serv_id_tmp[20], ip_listen_tmp[10];
 	pid_t dh_pid;
+	int items;
 	dh_file = fopen(dhmac_fname, "r");
 	if(dh_file == NULL) {
 		return ERR_FILE_OPEN;
 	}
-	fscanf(dh_file, "Client_mac: %s\nAcquired_ip: %s\nServer_id: %s\n\
+	items = fscanf(dh_file, "Client_mac: %s\nAcquired_ip: %s\nServer_id: %s\n\
 			Host_mac: %2X:%2X:%2X:%2X:%2X:%2X\nIP_listen: %s Pid: %d", mac_tmp, acq_ip_tmp, serv_id_tmp, \
 			(u_int32_t *) &aux_dmac[0], (u_int32_t *) &aux_dmac[1], (u_int32_t *) &aux_dmac[2], \
 			(u_int32_t *) &aux_dmac[3], (u_int32_t *) &aux_dmac[4], (u_int32_t *) &aux_dmac[5], \
 			ip_listen_tmp, &dh_pid);
+	if (items == EOF || items < 11) {
+		return ERR_FILE_FORMAT;
+	}
 	memcpy(dmac, aux_dmac, sizeof(dmac));
 	option50_ip = inet_addr(acq_ip_tmp);
 	server_id = inet_addr(serv_id_tmp);

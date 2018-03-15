@@ -307,11 +307,10 @@ int main(int argc, char *argv[])
                                 //scanf the custom dhcp option
                                 //format - option_no_dec,str|num|hex|ip,option_value
                                 
-                                u_int8_t option_no, option_type;
+                                u_int8_t option_no;
                                 char option_value[256] = { 0 };
                                 u_int32_t option_value_num = { 0 }, option_value_ip = { 0 };
                                 int option_index = 0;
-                                int scanf_state;
 
                                 if ((sscanf((char *)optarg, "%u,str,%255[^\n]s", (u_int32_t *) &option_no, option_value)) == 2) {
                                     if ((strlen(option_value) >= 256)) {
@@ -490,7 +489,6 @@ int main(int argc, char *argv[])
 
 	  if (verbose)
 	    {
-	      char *str[25];
 	      fprintf (stderr, "Using Ethernet source addr: %s\n", mac2str (iface_mac));
 	      fprintf (stderr, "Using DHCP chaddr: %s\n", mac2str (dhmac));
 	    }
