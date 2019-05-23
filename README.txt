@@ -83,8 +83,4 @@
           [root@CentOS dhtest-1.1]# ./dhtest -m 00:00:00:11:11:11 -c 60,str,"MSFT 5.0" 
           -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 
 
-  Contacts
-  -------- 
-  Authour: Saravanakumar.G
-  Send your comments, enhancements and bugs to saravana815@gmail.com
 
