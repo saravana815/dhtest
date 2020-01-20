@@ -616,7 +616,10 @@ int main(int argc, char *argv[])
 		}
 		build_option54();		 /* Server id */
 		build_option50();		 /* Requested IP Address */
-		build_option60_vci();	 /* Vendor Class Identifier */
+
+		if(vci_flag) {
+			build_option60_vci();	 /* Vendor Class Identifier */
+		};
 		build_optioneof();		 /* End of option */
 		build_dhpacket(DHCP_MSGDECLINE); /* Build DHCP release packet */
 		send_packet(DHCP_MSGDECLINE);	 /* Send DHCP release packet */
@@ -643,7 +646,7 @@ int main(int argc, char *argv[])
 		build_option51();               /* Option51 - DHCP lease time requested */
 	}
 
-	if(vci_flag == 1) {
+	if(vci_flag) {
 		build_option60_vci(); 		/* Option60 - VCI  */
 	}
         /* Build custom options */
@@ -725,7 +728,7 @@ int main(int argc, char *argv[])
 	if(fqdn_flag) {
 		build_option81_fqdn();
 	}
-	if(vci_flag == 1) {
+	if(vci_flag) {
 		build_option60_vci();  
 	}
 	if(option51_lease_time) {
