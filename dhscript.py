@@ -1,6 +1,20 @@
 #!/usr/bin/env python
 
-import commands
+import sys
+
+if sys.version_info.major <= 2:
+    from commands import getoutput
+else:
+    import subprocess
+
+    # subprocess.getoutput would not handle binary output
+    def getoutput(cmd):
+        try:
+            out = subprocess.run(cmd, text=False, shell=True,
+                                timeout=60, stdout=subprocess.PIPE)
+            return out.stdout
+        except subprocess.TimeoutExpired as e:
+            return b'ERROR: Timeout'
 
 #reset script log file
 with open('dhscript_log.txt', 'w') as f:
@@ -10,10 +24,10 @@ with open('dhscript_log.txt', 'w') as f:
 #print_log(- prints the output to both stdout and file
 def print_log(msg, cmd=None):
     if cmd != None:
-        print msg, cmd
+        print(msg, cmd)
         msg_full = msg + cmd + "\n"
     else:
-        print msg
+        print(msg)
         msg_full = msg + "\n"
 
     with open('dhscript_log.txt', 'a') as f:
@@ -22,8 +36,8 @@ def print_log(msg, cmd=None):
 
 #write_log - write the output to file
 def write_log(msg):
-    with open('dhscript_log.txt', 'a') as f:
-        msg_full = msg + "\n"
+    with open('dhscript_log.txt', 'ab') as f:
+        msg_full = msg + b"\n"
         f.write(msg_full)
         f.close
 
@@ -31,8 +45,10 @@ def run_dhtest(mac, arg_list, search_output):
     cmd = "./dhtest -i eth0 -m " + mac + arg_list
     print_log("=============================================================")
     print_log("Running command ", cmd)
-    out = commands.getoutput(cmd)
+    out = getoutput(cmd)
     write_log(out)
+    if isinstance(out, bytes):
+        search_output = search_output.encode('ascii')
     if out.find(search_output) != -1:
         print_log("PASS: command ", cmd)
     else:
