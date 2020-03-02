@@ -64,8 +64,8 @@ extern struct udphdr *uh_g;
 extern struct dhcpv4_hdr *dhcph_g;
 extern u_int8_t *dhopt_pointer_g;
 
-struct arp_hdr *arp_hg;
-struct icmp_hdr *icmp_hg;
+extern struct arp_hdr *arp_hg;
+extern struct icmp_hdr *icmp_hg;
 
 extern u_char dhmac[ETHER_ADDR_LEN];
 extern u_char dmac[ETHER_ADDR_LEN];
