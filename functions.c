@@ -603,41 +603,17 @@ u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dsta
  */
 int build_option53(int msg_type)
 {
-	if(msg_type == DHCP_MSGDISCOVER) {
+	if(msg_type == DHCP_MSGDISCOVER ||
+	   msg_type == DHCP_MSGREQUEST ||
+	   msg_type == DHCP_MSGRELEASE ||
+	   msg_type == DHCP_MSGDECLINE) {
 		u_int8_t msgtype = DHCP_MESSAGETYPE;
 		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGDISCOVER;
+		u_int8_t msg = (u_int8_t) msg_type;
 
 		memcpy(dhopt_buff, &msgtype, 1);
-                memcpy(dhopt_buff + 1, &msglen, 1);
-                memcpy(dhopt_buff + 2, &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGREQUEST) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGREQUEST;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                memcpy(dhopt_buff + 1, &msglen, 1);
-                memcpy(dhopt_buff + 2, &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGRELEASE) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGRELEASE;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                memcpy(dhopt_buff + 1, &msglen, 1);
-                memcpy(dhopt_buff + 2, &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGDECLINE) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGDECLINE;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                memcpy(dhopt_buff + 1, &msglen, 1);
-                memcpy(dhopt_buff + 2, &msg, 1);
+		memcpy(dhopt_buff + 1, &msglen, 1);
+		memcpy(dhopt_buff + 2, &msg, 1);
 		dhopt_size = dhopt_size + 3; 
 	}
 	return 0;
