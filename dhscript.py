@@ -25,12 +25,11 @@ with open('dhscript_log.txt', 'w') as f:
 #print_log(- prints the output to both stdout and file
 def print_log(msg, cmd=None):
     if cmd != None:
-        print(msg, cmd)
         msg_full = msg + cmd + "\n"
     else:
-        print(msg)
         msg_full = msg + "\n"
 
+    sys.stdout.write(msg_full)
     with open('dhscript_log.txt', 'a') as f:
         f.write(msg_full)
         f.close
