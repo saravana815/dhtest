@@ -6,6 +6,8 @@
 PYTHON=${PYTHON:-python}
 DNSMASQ=dnsmasq
 
+export DNSMASQ_TEST=1
+
 start() {
 	ip netns add server
 	if ! ip netns | grep server
