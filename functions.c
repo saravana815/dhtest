@@ -64,8 +64,8 @@ extern struct udphdr *uh_g;
 extern struct dhcpv4_hdr *dhcph_g;
 extern u_int8_t *dhopt_pointer_g;
 
-struct arp_hdr *arp_hg;
-struct icmp_hdr *icmp_hg;
+extern struct arp_hdr *arp_hg;
+extern struct icmp_hdr *icmp_hg;
 
 extern u_char dhmac[ETHER_ADDR_LEN];
 extern u_char dmac[ETHER_ADDR_LEN];
@@ -576,31 +576,26 @@ u_int16_t icmpchksum(u_int16_t *buff, int words)
  */
 u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dstaddr, u_int16_t proto, u_int16_t len) 
 {
-	unsigned int sum, i, last_word = 0;
+	unsigned int i, last_word;
+	uint32_t sum;
 
 	/* Checksum enhancement - Support for odd byte packets */
 	if((htons(len) % 2) == 1) {
 		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
 		last_word = (htons(last_word) << 8);
-		sum = 0;
-		for(i = 0;i < words; i++){
-			sum = sum + *(buff + i);
-		}
-		sum = sum + last_word;
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
 	} else {
 		/* Original checksum function */
-		sum = 0;
-		for(i = 0;i < words; i++){
-			sum = sum + *(buff + i);
-		}
-
-		sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-		sum = (sum >> 16) + sum;
-		return ~sum;
+		last_word = 0;
 	}
+
+	sum = 0;
+	for(i = 0;i < words; i++){
+		sum = sum + *(buff + i);
+	}
+	sum = sum + last_word;
+	sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
+	sum = (sum >> 16) + sum;
+	return ~sum;
 }
 
 /*
@@ -608,41 +603,17 @@ u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dsta
  */
 int build_option53(int msg_type)
 {
-	if(msg_type == DHCP_MSGDISCOVER) {
+	if(msg_type == DHCP_MSGDISCOVER ||
+	   msg_type == DHCP_MSGREQUEST ||
+	   msg_type == DHCP_MSGRELEASE ||
+	   msg_type == DHCP_MSGDECLINE) {
 		u_int8_t msgtype = DHCP_MESSAGETYPE;
 		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGDISCOVER;
+		u_int8_t msg = (u_int8_t) msg_type;
 
 		memcpy(dhopt_buff, &msgtype, 1);
-                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
-                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGREQUEST) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGREQUEST;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
-                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGRELEASE) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGRELEASE;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
-                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
-		dhopt_size = dhopt_size + 3; 
-	} else if(msg_type == DHCP_MSGDECLINE) {
-		u_int8_t msgtype = DHCP_MESSAGETYPE;
-		u_int8_t msglen = 1;
-		u_int8_t msg = DHCP_MSGDECLINE;
-
-		memcpy(dhopt_buff, &msgtype, 1);
-                strncpy((char *) (dhopt_buff + 1), (char *) &msglen, 1);
-                strncpy((char *) (dhopt_buff + 2), (char *) &msg, 1);
+		memcpy(dhopt_buff + 1, &msglen, 1);
+		memcpy(dhopt_buff + 2, &msg, 1);
 		dhopt_size = dhopt_size + 3; 
 	}
 	return 0;
@@ -1142,7 +1113,7 @@ int build_packet(int pkt_type)
 		u_int32_t ip_addr_tmp;
 		ip_addr_tmp = htonl(ip_address);
 		memcpy(arph->sender_mac, iface_mac, ETHER_ADDR_LEN);
-		memcpy(arph->sender_ip, (u_char *)&ip_addr_tmp, ETHER_ADDR_LEN);
+		memcpy(arph->sender_ip, (u_char *)&ip_addr_tmp, IP_ADDR_LEN);
 		memcpy(arph->target_mac, arp_hg->sender_mac, ETHER_ADDR_LEN);
 		memcpy(arph->target_ip, arp_hg->sender_ip, IP_ADDR_LEN);
 	} else if(ICMP_SEND) {
@@ -1810,7 +1781,7 @@ int get_if_mac_address(char *if_name, uint8_t *mac_address)
 
   // get the mac address ot the interface
   memset(&ifr, 0, sizeof(ifr));
-  strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name));
+  strncpy(ifr.ifr_name, if_name, sizeof(ifr.ifr_name)-1);
   if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) != 0)
     {
       perror("Error getting interface's MAC address:");
@@ -1846,7 +1817,8 @@ int str2mac(char *str, uint8_t *mac_addr)
   if(!str || !mac_addr)
     return 1;
 
-  strncpy(local_mac_str, str, 25);
+  strncpy(local_mac_str, str, 24);
+  local_mac_str[24] = 0x00;
 
   // replace semicolons with end of string character
   local_mac_str[2] =  local_mac_str[5] =  local_mac_str[8] =  local_mac_str[11] =  local_mac_str[14] = 0x00;
