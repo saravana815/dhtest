@@ -46,6 +46,9 @@ extern u_int8_t vci_buff[256];
 extern u_int8_t hostname_buff[256];
 extern u_int8_t fqdn_buff[256];
 extern u_int32_t option51_lease_time;
+extern u_int8_t option55_req_flag;
+extern u_int8_t option55_req_list[256];
+extern u_int32_t option55_req_len; 
 extern u_int32_t port;
 extern u_int8_t unicast_flag;
 extern u_int8_t nagios_flag;
@@ -671,21 +674,31 @@ int build_option54()
  */
 int build_option55() 
 {
-	u_int32_t msgtype = DHCP_PARAMREQUEST;
-	u_int32_t msglen = 5;
-	u_int8_t msg[5] = { 0 };
-	msg[0] = DHCP_SUBNETMASK;
-        msg[1] = DHCP_BROADCASTADDR;
-	msg[2] = DHCP_ROUTER;
-	msg[3] = DHCP_DOMAINNAME;
-	msg[4] = DHCP_DNS;
-	/* msg[5] = DHCP_LOGSERV; */
+	if (option55_req_flag == 0) {
+                u_int32_t msgtype = DHCP_PARAMREQUEST;
+                u_int32_t msglen = 5;
+                u_int8_t msg[5] = { 0 };
+                msg[0] = DHCP_SUBNETMASK;
+                msg[1] = DHCP_BROADCASTADDR;
+                msg[2] = DHCP_ROUTER;
+                msg[3] = DHCP_DOMAINNAME;
+                msg[4] = DHCP_DNS;
+                /* msg[5] = DHCP_LOGSERV; */
 
-	memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
-	memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
-	memcpy((dhopt_buff + dhopt_size + 2), msg, 5);
-	dhopt_size = dhopt_size + 7; 
-	return 0;
+                memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
+                memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
+                memcpy((dhopt_buff + dhopt_size + 2), msg, 5);
+                dhopt_size = dhopt_size + 7; 
+                return 0;
+	} else if (option55_req_flag == 1) {
+                u_int32_t msgtype = DHCP_PARAMREQUEST;
+                u_int32_t msglen = option55_req_len;
+
+                memcpy((dhopt_buff + dhopt_size), &msgtype, 1);
+                memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
+                memcpy((dhopt_buff + dhopt_size + 2), option55_req_list, option55_req_len);
+                dhopt_size = dhopt_size + option55_req_len + 2; 
+	}
 }
 
 /*

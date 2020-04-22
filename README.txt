@@ -28,6 +28,7 @@
   
     * Add option to send DHCP DECLINE packets ('-D' flag)
     * Fix potential Segmentation Fault in get_dhinfo() function
+    * Added dhcp option55 requested parameter list
 
 
   dhtest 1.4 - till 1.4 features supported
@@ -84,3 +85,24 @@
           -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 
 
 
+     * dhcp option55 requested parameter list example
+
+
+        root@ubuntu-16:~/dhtest# ./dhtest -m 00:00:00:11:11:11 -i enp0s3 -l 011C030F060A0B
+        DHCP discover sent       - Client MAC : 00:00:00:11:11:11
+        DHCP offer received      - Offered IP : 10.0.2.16
+        DHCP request sent        - Client MAC : 00:00:00:11:11:11
+        DHCP ack received        - Acquired IP: 10.0.2.16
+        root@ubuntu-16:~/dhtest# 
+     
+        Tshark output     
+        -------------
+          Option: (55) Parameter Request List
+              Length: 7
+              Parameter Request List Item: (1) Subnet Mask
+              Parameter Request List Item: (28) Broadcast Address
+              Parameter Request List Item: (3) Router
+              Parameter Request List Item: (15) Domain Name
+              Parameter Request List Item: (6) Domain Name Server
+              Parameter Request List Item: (10) Impress Server
+              Parameter Request List Item: (11) Resource Location Server

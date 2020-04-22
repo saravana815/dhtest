@@ -68,6 +68,9 @@ u_int16_t fqdn_flag = 0;
 u_int16_t fqdn_n = 0;
 u_int16_t fqdn_s = 0;
 u_int32_t option51_lease_time = 0;
+u_int8_t option55_req_flag = 0;
+u_int8_t option55_req_list[256] = { 0 }; /* option55 request list buffer */
+u_int32_t option55_req_len = 0; /* option55 request list buffer */
 u_int32_t port = 67;
 u_int8_t unicast_flag = 0;
 u_int8_t nagios_flag = 0;
@@ -113,6 +116,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "  -N\t\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
+	fprintf(stdout, "  -l, --option55-request-list [ request_param_list ] # Requested parameter list in hex bytes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
 	fprintf(stdout, "  -o, --option60-vci\t[ VCI_string ]\t# Vendor Class Idendifier string\n");
 	fprintf(stdout, "  -h, --option12-hostname [ hostname_string ] # Client hostname string\n");
@@ -159,6 +163,7 @@ int main(int argc, char *argv[])
 		{ "dhcp_xid", required_argument, 0, 'x' },
 		{ "tos", required_argument, 0, 't' },
 		{ "option51-lease_time", required_argument, 0, 'L' },
+		{ "option55-request-list", required_argument, 0, 'l' },
 		{ "option50-ip", required_argument, 0, 'I' },
 		{ "option60-vci", required_argument, 0, 'o' },
 		{ "option12-hostname", required_argument, 0, 'h' },
@@ -185,7 +190,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:l:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -264,6 +269,30 @@ int main(int argc, char *argv[])
 
 			case 'L':
 				option51_lease_time = atoi(optarg);
+				break;
+
+			case 'l':
+				option55_req_flag = 1;
+				char option55_req_list_tmp[256] = { 0 }; 
+				if(strlen(optarg) >= 255) {
+					fprintf(stdout, "supported option55 requested parameter list maximum size is 254 bytes\n");
+					exit(2);
+				}
+                                if ((sscanf((char *)optarg, "%254s", option55_req_list_tmp)) == 1) {
+                                    if ((strlen((const char *) option55_req_list_tmp) % 2) == 1) {
+                                        fprintf(stdout, "option55 requested parameter list hex value length must be even\n");
+                                        exit(2);
+                                    }
+                                    u_int32_t hex_length = (strlen((const char *) option55_req_list_tmp)/2);
+
+                                    int tmp, index = 0;
+                                    for(tmp = 0; tmp < hex_length; tmp++) {
+                                        sscanf(&option55_req_list_tmp[index], "%2X", (unsigned int*)&option55_req_list[tmp]);
+                                        index = index + 2;
+                                    }
+				    option55_req_len = hex_length;
+                                    //print_buff(option55_req_list, sizeof((option55_req_list)));
+				}
 				break;
 
 			case 'I':
