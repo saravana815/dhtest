@@ -55,6 +55,7 @@ extern u_int8_t unicast_flag;
 extern u_int8_t nagios_flag;
 extern u_int8_t json_flag;
 extern u_int8_t json_first;
+extern u_int16_t elapsed_time;
 extern u_char *giaddr;
 extern u_char *server_addr;
 
@@ -870,7 +871,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_hlen = ETHER_ADDR_LEN;
 		dhpointer->dhcp_hopcount = 0;
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
-		dhpointer->dhcp_secs = 0;
+		dhpointer->dhcp_secs = elapsed_time;
 		dhpointer->dhcp_flags = bcast_flag;
 		if (unicast_flag)
 			dhpointer->dhcp_cip = unicast_ip_address;
@@ -943,7 +944,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_hlen = ETHER_ADDR_LEN;
 		dhpointer->dhcp_hopcount = 0;
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
-		dhpointer->dhcp_secs = 0;
+		dhpointer->dhcp_secs = elapsed_time;
 		dhpointer->dhcp_flags = bcast_flag;
 		if (unicast_flag)
 			dhpointer->dhcp_cip = unicast_ip_address;
@@ -1013,7 +1014,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_hlen = ETHER_ADDR_LEN;
 		dhpointer->dhcp_hopcount = 0;
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
-		dhpointer->dhcp_secs = 0;
+		dhpointer->dhcp_secs = elapsed_time;
 		dhpointer->dhcp_flags = bcast_flag;
 		dhpointer->dhcp_cip = option50_ip;
 		dhpointer->dhcp_yip = 0;
@@ -1080,7 +1081,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_hlen = ETHER_ADDR_LEN;
 		dhpointer->dhcp_hopcount = 0;
 		dhpointer->dhcp_xid = htonl(dhcp_xid);
-		dhpointer->dhcp_secs = 0;
+		dhpointer->dhcp_secs = elapsed_time;
 		dhpointer->dhcp_flags = bcast_flag;
 		dhpointer->dhcp_cip = 0;
 		dhpointer->dhcp_yip = 0;
