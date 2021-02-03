@@ -80,6 +80,7 @@ u_int8_t nagios_flag = 0;
 u_int8_t json_flag = 0;
 u_int8_t dhcp_decline_flag = 0;
 u_int8_t json_first = 1;
+u_int16_t elapsed_time = 0; 
 char *giaddr = "0.0.0.0";
 char *server_addr = "255.255.255.255";
 
@@ -117,6 +118,7 @@ void print_help(char *cmd)
 	fprintf(stdout, "Usage: %s [ options ]\n", cmd);
 	fprintf(stdout, "  -m mac_address\n");
 	fprintf(stdout, "  -N\t\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
+	fprintf(stdout, "  -e, --elapsed-time \t[ seconds ]\t# Sets the specified value in the \"secs\" field (seconds since the client first requested an IP). \n");
 	fprintf(stdout, "  -R, --router mac_address of router\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
@@ -163,6 +165,7 @@ int main(int argc, char *argv[])
 		{ "mac", required_argument, 0, 'm' },
 		{ "rtrmac", required_argument, 0, 'R' },
 		{ "strict-mac", no_argument, 0, 'N' },
+		{ "elapsed-time", required_argument, 0, 'e' },
 		{ "interface", required_argument, 0, 'i' },
 		{ "vlan", required_argument, 0, 'v' },
 		{ "dhcp_xid", required_argument, 0, 'x' },
@@ -195,7 +198,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:R:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:l:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:R::e:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:l:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -234,6 +237,14 @@ int main(int argc, char *argv[])
 					memcpy(rtrmac, aux_rtrmac, sizeof(rtrmac));
 					rtrmac_flag = 1;
 				}
+				break;
+			case 'e':
+				if(atoi(optarg) < 0 || atoi(optarg) > 65535) {
+					fprintf(stdout, "Invalid sec value. Range 0 to 65535\n");
+					exit(2);
+				}
+
+				elapsed_time = (atoi(optarg)>>8) | (atoi(optarg)<<8);
 				break;
 			case 'i':
 				iface = if_nametoindex(optarg);
