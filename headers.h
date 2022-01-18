@@ -22,7 +22,7 @@ int recv_packet(int pkt_type);	/* Receives DHCP packet on socket*/
 int reset_dhopt_size();		/* Resets the dhopt_size to zero */
 int set_rand_dhcp_xid();	/* Sets a random DHCP xid */
 int build_option53(int msg_type);	/* Option53: MSGTYPE. Builds option53*/
-int build_option55();		/* Requested parameters list */
+void build_option55();		/* Requested parameters list */
 int build_option54();		/* Builds server identifier on DHCP request */
 int build_option50();		/* Option50: Rqstd IP. Builds option50*/
 int build_option51();		/* Option51: Rqstd lease time. Builds option51*/

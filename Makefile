@@ -1,13 +1,13 @@
 # Makefile to generate dhtest
 
-CC=gcc
-#CFLAGS=-Wall -g
+CC = gcc
+CFLAGS ?= -Wall -Wextra
 
 dhtest: dhtest.o functions.o chksum.o
 	$(CC) $(LDFLAGS) $^ -o dhtest
 
 chksum_test: chksum.o functions_test.o dhcp_err.o
-	$(CC) -ggdb -O0 -Wall -Wextra $(LDFLAGS) $^ -o chksum_test
+	$(CC) $(LDFLAGS) $^ -o chksum_test
 
 .PHONY: test
 test: chksum_test

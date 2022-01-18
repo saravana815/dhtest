@@ -10,7 +10,7 @@
  */
 u_int16_t l4_sum(u_int16_t *buff, int words, u_int32_t *srcaddr, u_int32_t *dstaddr, u_int16_t proto, u_int16_t len)
 {
-	unsigned int i, last_word;
+	unsigned int last_word;
 
 	/* Checksum enhancement - Support for odd byte packets */
 	if((htons(len) % 2) == 1) {
@@ -22,14 +22,14 @@ u_int16_t l4_sum(u_int16_t *buff, int words, u_int32_t *srcaddr, u_int32_t *dsta
 	}
 
 	uint32_t sum = 0;
-	for(i = 0;i < words; i++){
+	for(int i = 0; i < words; i++){
 		sum = sum + *(buff + i);
 	}
 
 	sum = sum + last_word;
     /* pseudo IPv4 header */
 	sum = sum + (*(srcaddr) & 0xffff) + (*(srcaddr) >> 16) + (*(dstaddr) & 0xffff) + (*(dstaddr) >> 16) + proto + len;
+    /* carry-out bits */
 	sum = (sum >> 16) + sum;
-    sum = ~sum;
-	return sum;
+	return ~sum;
 }
