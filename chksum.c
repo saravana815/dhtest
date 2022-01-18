@@ -15,7 +15,7 @@ u_int16_t l4_sum(u_int16_t *buff, int words, u_int32_t *srcaddr, u_int32_t *dsta
 	/* Checksum enhancement - Support for odd byte packets */
 	if((htons(len) % 2) == 1) {
 		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
-		last_word = (htons(last_word) << 8);
+		last_word = htons(last_word << 8);
 	} else {
 		/* Original checksum function */
 		last_word = 0;
