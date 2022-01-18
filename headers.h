@@ -153,8 +153,11 @@ struct icmp_hdr
 /*
  * UDP header included from netinet/udp.h
  */
+#if 0
 #include<netinet/udp.h>
-
+#else
+#include<linux/udp.h>
+#endif
 
 /*
  *  DHCP header

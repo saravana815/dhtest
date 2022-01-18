@@ -2,3 +2,4 @@ dhtest
 *.o
 00:*
 dhscript_log.txt
+compile_commands.json

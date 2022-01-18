@@ -14,6 +14,7 @@
 #include<linux/if_ether.h>
 #include<linux/if_arp.h>
 #include "headers.h"
+#include "chksum.h"
 
 //Defined in dhtest.c
 extern int sock_packet;
@@ -577,33 +578,6 @@ u_int16_t icmpchksum(u_int16_t *buff, int words)
 }
 
 /*
- * TCP/UDP checksum function
- */
-u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dstaddr, u_int16_t proto, u_int16_t len)
-{
-	unsigned int i, last_word;
-	uint32_t sum;
-
-	/* Checksum enhancement - Support for odd byte packets */
-	if((htons(len) % 2) == 1) {
-		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
-		last_word = (htons(last_word) << 8);
-	} else {
-		/* Original checksum function */
-		last_word = 0;
-	}
-
-	sum = 0;
-	for(i = 0;i < words; i++){
-		sum = sum + *(buff + i);
-	}
-	sum = sum + last_word;
-	sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-	sum = (sum >> 16) + sum;
-	return ~sum;
-}
-
-/*
  * Builds DHCP option53 on dhopt_buff
  */
 int build_option53(int msg_type)
@@ -1025,7 +999,7 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_magic = htonl(DHCP_MAGIC);
 
 		/* DHCP option buffer is copied here to DHCP packet */
-		u_char *dhopt_pointer = (u_char *)(dhcp_packet_release + l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size);
+		u_char *dhopt_pointer = dhcp_packet_release + l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size;
 		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
 
 		/* UDP checksum is done here */
