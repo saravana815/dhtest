@@ -4,3 +4,4 @@ dhtest
 dhscript_log.txt
 compile_commands.json
 chksum_test
+.cache/
