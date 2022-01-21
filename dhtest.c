@@ -306,8 +306,8 @@ int main(int argc, char *argv[])
                                     }
                                     u_int32_t hex_length = (strlen((const char *) option55_req_list_tmp)/2);
 
-                                    int tmp, index = 0;
-                                    for(tmp = 0; tmp < hex_length; tmp++) {
+                                    int index = 0;
+                                    for(u_int32_t tmp = 0; tmp < hex_length; tmp++) {
                                         sscanf(&option55_req_list_tmp[index], "%2X", (unsigned int*)&option55_req_list[tmp]);
                                         index = index + 2;
                                     }

@@ -14,6 +14,7 @@
 #include<linux/if_ether.h>
 #include<linux/if_arp.h>
 #include "headers.h"
+#include "chksum.h"
 
 //Defined in dhtest.c
 extern int sock_packet;
@@ -539,9 +540,9 @@ int set_rand_dhcp_xid()
  */
 u_int16_t ipchksum(u_int16_t *buff, int words)
 {
-	unsigned int sum, i;
+	unsigned int sum;
 	sum = 0;
-	for(i = 0;i < words; i++){
+	for(int i = 0;i < words; i++){
 		sum = sum + *(buff + i);
 	}
 	sum = (sum >> 16) + sum;
@@ -553,14 +554,14 @@ u_int16_t ipchksum(u_int16_t *buff, int words)
  */
 u_int16_t icmpchksum(u_int16_t *buff, int words)
 {
-	unsigned int sum, i;
+	unsigned int sum;
 	unsigned int last_word = 0;
 	/* Checksum enhancement for odd packets */
 	if((icmp_len % 2) == 1) {
 		last_word = *((u_int8_t *)buff + icmp_len + ICMP_H - 1);
 		last_word = (htons(last_word) << 8);
 		sum = 0;
-		for(i = 0;i < words; i++){
+		for(int i = 0;i < words; i++){
 			sum = sum + *(buff + i);
 		}
 		sum = sum + last_word;
@@ -568,39 +569,12 @@ u_int16_t icmpchksum(u_int16_t *buff, int words)
 		return (u_int16_t)~sum;
 	} else {
 		sum = 0;
-		for(i = 0;i < words; i++){
+		for(int i = 0;i < words; i++){
 			sum = sum + *(buff + i);
 		}
 		sum = (sum >> 16) + sum;
 		return (u_int16_t)~sum;
 	}
-}
-
-/*
- * TCP/UDP checksum function
- */
-u_int16_t l4_sum(u_int16_t *buff, int words, u_int16_t *srcaddr, u_int16_t *dstaddr, u_int16_t proto, u_int16_t len)
-{
-	unsigned int i, last_word;
-	uint32_t sum;
-
-	/* Checksum enhancement - Support for odd byte packets */
-	if((htons(len) % 2) == 1) {
-		last_word = *((u_int8_t *)buff + ntohs(len) - 1);
-		last_word = (htons(last_word) << 8);
-	} else {
-		/* Original checksum function */
-		last_word = 0;
-	}
-
-	sum = 0;
-	for(i = 0;i < words; i++){
-		sum = sum + *(buff + i);
-	}
-	sum = sum + last_word;
-	sum = sum + *(srcaddr) + *(srcaddr + 1) + *(dstaddr) + *(dstaddr + 1) + proto + len;
-	sum = (sum >> 16) + sum;
-	return ~sum;
 }
 
 /*
@@ -674,7 +648,7 @@ int build_option54()
 /*
  * Builds DHCP option55 on dhopt_buff
  */
-int build_option55()
+void build_option55()
 {
 	if (option55_req_flag == 0) {
                 u_int32_t msgtype = DHCP_PARAMREQUEST;
@@ -691,7 +665,6 @@ int build_option55()
                 memcpy((dhopt_buff + dhopt_size + 1), &msglen, 1);
                 memcpy((dhopt_buff + dhopt_size + 2), msg, 5);
                 dhopt_size = dhopt_size + 7;
-                return 0;
 	} else if (option55_req_flag == 1) {
                 u_int32_t msgtype = DHCP_PARAMREQUEST;
                 u_int32_t msglen = option55_req_len;
@@ -889,7 +862,7 @@ int build_dhpacket(int pkt_type)
 		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
 
 		/* UDP checksum is done here */
-		uh->check = l4_sum((u_int16_t *) (dhcp_packet_disc + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len));
+		uh->check = l4_sum((u_int16_t *) (dhcp_packet_disc + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), &iph->saddr, &iph->daddr, htons(l4_proto), htons(l4_len));
 	}
 	if(pkt_type == DHCP_MSGREQUEST) {
 		if(vlan == 0) {
@@ -962,7 +935,7 @@ int build_dhpacket(int pkt_type)
 		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
 
 		/* UDP checksum is done here */
-		uh->check = l4_sum((u_int16_t *) (dhcp_packet_request + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len));
+		uh->check = l4_sum((u_int16_t *) (dhcp_packet_request + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), &iph->saddr, &iph->daddr, htons(l4_proto), htons(l4_len));
 	}
 	if(pkt_type == DHCP_MSGRELEASE) {
 		if(vlan == 0) {
@@ -1025,11 +998,11 @@ int build_dhpacket(int pkt_type)
 		dhpointer->dhcp_magic = htonl(DHCP_MAGIC);
 
 		/* DHCP option buffer is copied here to DHCP packet */
-		u_char *dhopt_pointer = (u_char *)(dhcp_packet_release + l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size);
+		u_char *dhopt_pointer = dhcp_packet_release + l2_hdr_size + l3_hdr_size + l4_hdr_size + dhcp_hdr_size;
 		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
 
 		/* UDP checksum is done here */
-		uh->check = l4_sum((u_int16_t *) (dhcp_packet_release + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len));
+		uh->check = l4_sum((u_int16_t *) (dhcp_packet_release + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), &iph->saddr, &iph->daddr, htons(l4_proto), htons(l4_len));
 	}
 
 	if(pkt_type == DHCP_MSGDECLINE) {
@@ -1096,7 +1069,7 @@ int build_dhpacket(int pkt_type)
 		memcpy(dhopt_pointer, dhopt_buff, dhopt_size);
 
 		/* UDP checksum is done here */
-		uh->check = l4_sum((u_int16_t *) (dhcp_packet_decline + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), (u_int16_t *)&iph->saddr, (u_int16_t *)&iph->daddr, htons(l4_proto), htons(l4_len));
+		uh->check = l4_sum((u_int16_t *) (dhcp_packet_decline + l2_hdr_size + l3_hdr_size), ((dhcp_hdr_size + dhopt_size + l4_hdr_size) / 2), &iph->saddr, &iph->daddr, htons(l4_proto), htons(l4_len));
 	}
 
         return 0;
