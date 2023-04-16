@@ -151,9 +151,9 @@ struct icmp_hdr
 };
 
 /*
- * UDP header included from netinet/udp.h
+ * UDP header included from linux/udp.h
  */
-#include<netinet/udp.h>
+#include<linux/udp.h>
 
 
 /*

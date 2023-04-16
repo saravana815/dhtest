@@ -1,6 +1,6 @@
 /*
  * DHCP client simulation tool. For testing pursose only.
- * This program needs to be run with root privileges. 
+ * This program needs to be run with root privileges.
  * Author - Saravanakumar.G E-mail: saravana815@gmail.com
  */
 
@@ -20,11 +20,11 @@
 
 int sock_packet, iface = 2;	/* Socket descripter & transmit interface index */
 struct sockaddr_ll ll = { 0 };	/* Socket address structure */
-u_int16_t vlan = 0;		
-u_int8_t l3_tos = 0;		
+u_int16_t vlan = 0;
+u_int8_t l3_tos = 0;
 u_int16_t l2_hdr_size = 14;
 u_int16_t l3_hdr_size = 20;
-u_int16_t l4_hdr_size = 8;	
+u_int16_t l4_hdr_size = 8;
 u_int16_t dhcp_hdr_size = sizeof(struct dhcpv4_hdr);
 
 /* All protocheader sizes */
@@ -40,10 +40,11 @@ u_char dhcp_packet_decline[1518] = { 0 };
 u_char dhopt_buff[500] = { 0 };
 u_int32_t dhopt_size = { 0 };
 u_char dhmac[ETHER_ADDR_LEN] = { 0 };
+u_char rtrmac[ETHER_ADDR_LEN] = { 0 };
 u_char dmac[ETHER_ADDR_LEN];
 u_char iface_mac[ETHER_ADDR_LEN] = { 0 };
 
-/* 
+/*
 * For Custom DHCP options
 * Static arrays for custom_dhcp_option_hdr
 */
@@ -52,13 +53,15 @@ u_int8_t no_custom_dhcp_options = { 0 };
 struct custom_dhcp_option_hdr custom_dhcp_options[MAX_CUSTOM_DHCP_OPTIONS];
 
 char dhmac_fname[20];
+char rtrmac_fname[20];
 char iface_name[30] = { 0 };
 char ip_str[128];
 u_int8_t dhmac_flag = 0;
+u_int8_t rtrmac_flag = 0;
 u_int8_t strict_mac_flag = 0;
 u_int32_t server_id = { 0 }, option50_ip = { 0 };
-u_int32_t dhcp_xid = 0;  
-u_int16_t bcast_flag = 0; /* DHCP broadcast flag */ 
+u_int32_t dhcp_xid = 0;
+u_int16_t bcast_flag = 0; /* DHCP broadcast flag */
 u_int8_t vci_buff[256] = { 0 }; /* VCI buffer*/
 u_int16_t vci_flag = 0;
 u_int8_t hostname_buff[256] = { 0 }; /* Hostname buffer*/
@@ -68,6 +71,9 @@ u_int16_t fqdn_flag = 0;
 u_int16_t fqdn_n = 0;
 u_int16_t fqdn_s = 0;
 u_int32_t option51_lease_time = 0;
+u_int8_t option55_req_flag = 0;
+u_int8_t option55_req_list[256] = { 0 }; /* option55 request list buffer */
+u_int32_t option55_req_len = 0; /* option55 request list buffer */
 u_int32_t port = 67;
 u_int8_t unicast_flag = 0;
 u_int8_t nagios_flag = 0;
@@ -111,8 +117,10 @@ void print_help(char *cmd)
 	fprintf(stdout, "Usage: %s [ options ]\n", cmd);
 	fprintf(stdout, "  -m mac_address\n");
 	fprintf(stdout, "  -N\t\t\t\t\t# always use interface's MAC address in Ethernet frame\n");
+	fprintf(stdout, "  -R, --router mac_address of router\n");
 	fprintf(stdout, "  -r, --release\t\t\t\t# Releases obtained DHCP IP for corresponding MAC\n");
 	fprintf(stdout, "  -L, --option51-lease_time [ Lease_time ] # Option 51. Requested lease time in secondes\n");
+	fprintf(stdout, "  -l, --option55-request-list [ request_param_list ] # Requested parameter list in hex bytes\n");
 	fprintf(stdout, "  -I, --option50-ip\t[ IP_address ]\t# Option 50 IP address on DHCP discover\n");
 	fprintf(stdout, "  -o, --option60-vci\t[ VCI_string ]\t# Vendor Class Idendifier string\n");
 	fprintf(stdout, "  -h, --option12-hostname [ hostname_string ] # Client hostname string\n");
@@ -153,12 +161,14 @@ int main(int argc, char *argv[])
 	int option_index = 0;
 	static struct option long_options[] = {
 		{ "mac", required_argument, 0, 'm' },
+		{ "rtrmac", required_argument, 0, 'R' },
 		{ "strict-mac", no_argument, 0, 'N' },
 		{ "interface", required_argument, 0, 'i' },
 		{ "vlan", required_argument, 0, 'v' },
 		{ "dhcp_xid", required_argument, 0, 'x' },
 		{ "tos", required_argument, 0, 't' },
 		{ "option51-lease_time", required_argument, 0, 'L' },
+		{ "option55-request-list", required_argument, 0, 'l' },
 		{ "option50-ip", required_argument, 0, 'I' },
 		{ "option60-vci", required_argument, 0, 'o' },
 		{ "option12-hostname", required_argument, 0, 'h' },
@@ -185,7 +195,7 @@ int main(int argc, char *argv[])
 
 	/*getopt routine to get command line arguments*/
 	while(get_tmp < argc) {
-		get_cmd  = getopt_long(argc, argv, "m:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:h:d:c:",\
+		get_cmd  = getopt_long(argc, argv, "m:R:i:v:t:bfVrpanNsjDu::T:P:g:S:I:o:k:L:l:h:d:c:",\
 				long_options, &option_index);
 		if(get_cmd == -1 ) {
 			break;
@@ -208,7 +218,23 @@ int main(int argc, char *argv[])
 					dhmac_flag = 1;
 				}
 				break;
+			case 'R':
+				{
+					u_char aux_rtrmac[ETHER_ADDR_LEN +1];
 
+					if (strlen(optarg) > 18) {
+						fprintf(stdout, "Invalid rtr mac address\n");
+						exit(2);
+					}
+					strcpy(rtrmac_fname, optarg);
+					sscanf((char *)optarg, "%2X:%2X:%2X:%2X:%2X:%2X",
+							(u_int32_t *) &aux_rtrmac[0], (u_int32_t *) &aux_rtrmac[1],
+							(u_int32_t *) &aux_rtrmac[2], (u_int32_t *) &aux_rtrmac[3],
+							(u_int32_t *) &aux_rtrmac[4], (u_int32_t *) &aux_rtrmac[5]);
+					memcpy(rtrmac, aux_rtrmac, sizeof(rtrmac));
+					rtrmac_flag = 1;
+				}
+				break;
 			case 'i':
 				iface = if_nametoindex(optarg);
 				if(iface == 0) {
@@ -266,6 +292,30 @@ int main(int argc, char *argv[])
 				option51_lease_time = atoi(optarg);
 				break;
 
+			case 'l':
+				option55_req_flag = 1;
+				char option55_req_list_tmp[256] = { 0 };
+				if(strlen(optarg) >= 255) {
+					fprintf(stdout, "supported option55 requested parameter list maximum size is 254 bytes\n");
+					exit(2);
+				}
+                                if ((sscanf((char *)optarg, "%254s", option55_req_list_tmp)) == 1) {
+                                    if ((strlen((const char *) option55_req_list_tmp) % 2) == 1) {
+                                        fprintf(stdout, "option55 requested parameter list hex value length must be even\n");
+                                        exit(2);
+                                    }
+                                    u_int32_t hex_length = (strlen((const char *) option55_req_list_tmp)/2);
+
+                                    int tmp, index = 0;
+                                    for(tmp = 0; tmp < hex_length; tmp++) {
+                                        sscanf(&option55_req_list_tmp[index], "%2X", (unsigned int*)&option55_req_list[tmp]);
+                                        index = index + 2;
+                                    }
+				    option55_req_len = hex_length;
+                                    //print_buff(option55_req_list, sizeof((option55_req_list)));
+				}
+				break;
+
 			case 'I':
 				option50_ip = inet_addr(optarg);
 				break;
@@ -306,7 +356,7 @@ int main(int argc, char *argv[])
 
                                 //scanf the custom dhcp option
                                 //format - option_no_dec,str|num|hex|ip,option_value
-                                
+
                                 u_int8_t option_no;
                                 char option_value[256] = { 0 };
                                 u_int32_t option_value_num = { 0 }, option_value_ip = { 0 };
@@ -321,8 +371,8 @@ int main(int argc, char *argv[])
                                     option_index = no_custom_dhcp_options - 1;
 
                                     custom_dhcp_options[option_index].option_no = option_no;
-                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_STRING; 
-                                    custom_dhcp_options[option_index].option_len = strlen((const char *) option_value); 
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_STRING;
+                                    custom_dhcp_options[option_index].option_len = strlen((const char *) option_value);
                                     memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
 
                                 } else if ((sscanf((char *)optarg, "%u,num,%u", (u_int32_t *) &option_no, &option_value_num)) == 2) {
@@ -330,11 +380,11 @@ int main(int argc, char *argv[])
                                     option_index = no_custom_dhcp_options - 1;
 
                                     custom_dhcp_options[option_index].option_no = option_no;
-                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_NUMBER; 
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_NUMBER;
                                     custom_dhcp_options[option_index].option_len = 4; //length of 4 byte
-                                    custom_dhcp_options[option_index].option_value_num = htonl(option_value_num); 
+                                    custom_dhcp_options[option_index].option_value_num = htonl(option_value_num);
                                     //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
-                                    
+
                                 } else if ((sscanf((char *)optarg, "%u,hex,%254s", (u_int32_t *) &option_no, option_value)) == 2) {
                                     if ((strlen(option_value) >= 255)) {
                                         fprintf(stdout, "dhcp custom option value hex length is more than 254\n");
@@ -350,8 +400,8 @@ int main(int argc, char *argv[])
                                     int hex_length = (strlen((const char *) option_value)/2);
 
                                     custom_dhcp_options[option_index].option_no = option_no;
-                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_HEX; 
-                                    custom_dhcp_options[option_index].option_len = hex_length; 
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_HEX;
+                                    custom_dhcp_options[option_index].option_len = hex_length;
                                     //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
                                     int tmp, index = 0;
                                     for(tmp = 0; tmp < hex_length; tmp++) {
@@ -365,21 +415,21 @@ int main(int argc, char *argv[])
                                     option_index = no_custom_dhcp_options - 1;
 
                                     option_value_ip = inet_addr((const char *) option_value);
-                                    if (option_value_ip == INADDR_NONE) { 
+                                    if (option_value_ip == INADDR_NONE) {
                                         fprintf(stdout, "Invalid IP address on option value\n");
                                         exit(2);
                                     }
                                     custom_dhcp_options[option_index].option_no = option_no;
-                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_IP; 
+                                    custom_dhcp_options[option_index].option_type = CUST_DHCP_OPTION_IP;
                                     custom_dhcp_options[option_index].option_len = 4; //length of 4 byte
-                                    custom_dhcp_options[option_index].option_value_ip = option_value_ip; 
+                                    custom_dhcp_options[option_index].option_value_ip = option_value_ip;
                                     //memcpy(custom_dhcp_options[option_index].option_value, option_value, sizeof(custom_dhcp_options[option_index].option_value));
 
                                 } else {
                                     fprintf(stdout, "custom option parse error. Use correct format\n");
                                     exit(2);
                                 }
-                                
+
                                 /* - For debugging
                                 fprintf(stdout, "Custom dhcp option - %s\n", optarg);
                                 fprintf(stdout, "Custom dhcp option count - %d\n", no_custom_dhcp_options);
@@ -468,7 +518,7 @@ int main(int argc, char *argv[])
 				exit(2);
 		}
 		get_tmp++;
-	}	
+	}
 
 	if(!*iface_name) {
 		fprintf(stdout, "  -i interface is mandatory option\n");
@@ -499,6 +549,10 @@ int main(int argc, char *argv[])
           /* dhmac_flag is set and strict_mac_flag is not set */
           memcpy (iface_mac, dhmac, ETHER_ADDR_LEN);
   }
+
+	if (verbose && rtrmac_flag){
+			fprintf (stderr, "Using Router MAC addr: %s\n", mac2str(rtrmac));
+	}
 
 	if(json_flag) {
 		fprintf(stdout, "[");
@@ -535,7 +589,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Sets a random DHCP xid */
-	set_rand_dhcp_xid(); 
+	set_rand_dhcp_xid();
 
 	/*
 	 * If DHCP release flag is set, send DHCP release packet
@@ -577,7 +631,7 @@ int main(int argc, char *argv[])
 		send_packet(DHCP_MSGRELEASE);	 /* Send DHCP release packet */
 		clear_promisc();		 /* Clear the promiscuous mode */
 		close_socket();
-		return 0; 
+		return 0;
 	}
 
 	/*
@@ -616,13 +670,16 @@ int main(int argc, char *argv[])
 		}
 		build_option54();		 /* Server id */
 		build_option50();		 /* Requested IP Address */
-		build_option60_vci();	 /* Vendor Class Identifier */
+
+		if(vci_flag) {
+			build_option60_vci();	 /* Vendor Class Identifier */
+		};
 		build_optioneof();		 /* End of option */
 		build_dhpacket(DHCP_MSGDECLINE); /* Build DHCP release packet */
 		send_packet(DHCP_MSGDECLINE);	 /* Send DHCP release packet */
 		clear_promisc();		 /* Clear the promiscuous mode */
 		close_socket();
-		return 0; 
+		return 0;
 	}
 
 	if(timeout) {
@@ -643,7 +700,7 @@ int main(int argc, char *argv[])
 		build_option51();               /* Option51 - DHCP lease time requested */
 	}
 
-	if(vci_flag == 1) {
+	if(vci_flag) {
 		build_option60_vci(); 		/* Option60 - VCI  */
 	}
         /* Build custom options */
@@ -659,10 +716,10 @@ int main(int argc, char *argv[])
 		/* Sends DHCP discover packet */
 		send_packet(DHCP_MSGDISCOVER);
 		/*
-		 * recv_packet functions returns when the specified 
+		 * recv_packet functions returns when the specified
 		 * packet is received
 		 */
-		dhcp_offer_state = recv_packet(DHCP_MSGOFFER); 
+		dhcp_offer_state = recv_packet(DHCP_MSGOFFER);
 
 		if(timeout) {
 			time_now = time(NULL);
@@ -709,14 +766,14 @@ int main(int argc, char *argv[])
 			set_serv_id_opt50();
 			if (!nagios_flag && !json_flag)
   				fprintf(stdout, "Offered IP : %s\n", get_ip_str(dhcph_g->dhcp_yip));
-			if(!nagios_flag && verbose) { 
+			if(!nagios_flag && verbose) {
 				print_dhinfo(DHCP_MSGOFFER);
 			}
 		}
 	}
 	/* Reset the dhopt buffer to build DHCP request options  */
 	reset_dhopt_size();
-	build_option53(DHCP_MSGREQUEST); 
+	build_option53(DHCP_MSGREQUEST);
 	build_option50();
 	build_option54();
 	if(hostname_flag) {
@@ -725,8 +782,8 @@ int main(int argc, char *argv[])
 	if(fqdn_flag) {
 		build_option81_fqdn();
 	}
-	if(vci_flag == 1) {
-		build_option60_vci();  
+	if(vci_flag) {
+		build_option60_vci();
 	}
 	if(option51_lease_time) {
 		build_option51();                       /* Option51 - DHCP lease time requested */
@@ -739,10 +796,10 @@ int main(int argc, char *argv[])
 	build_optioneof();
 	build_dhpacket(DHCP_MSGREQUEST); 		/* Builds specified packet */
 	int dhcp_ack_state = 1;
-	while(dhcp_ack_state != DHCP_ACK_RCVD) { 
+	while(dhcp_ack_state != DHCP_ACK_RCVD) {
 
 		send_packet(DHCP_MSGREQUEST);
-		dhcp_ack_state = recv_packet(DHCP_MSGACK); 
+		dhcp_ack_state = recv_packet(DHCP_MSGACK);
 
 		if(timeout) {
 			time_now = time(NULL);
@@ -792,7 +849,7 @@ int main(int argc, char *argv[])
 			}
 
 			/* Logs DHCP IP details to log file. This file is used for DHCP release */
-			log_dhinfo(); 
+			log_dhinfo();
 			if(!nagios_flag && verbose) {
 				print_dhinfo(DHCP_MSGACK);
 			}
@@ -800,7 +857,7 @@ int main(int argc, char *argv[])
 			if (!nagios_flag && !json_flag) {
 				fprintf(stdout, "DHCP nack received\t - ");
 				fprintf(stdout, "Client MAC : %02x:%02x:%02x:%02x:%02x:%02x\n", \
-					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+					dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
 			} else if(json_flag) {
 				if(!json_first) {
 					fprintf(stdout, ",");
@@ -813,7 +870,7 @@ int main(int argc, char *argv[])
                                                 "\"result-type\":\"NACK\","
                                                 "\"result-value\":\"%02x:%02x:%02x:%02x:%02x:%02x\""
 						"}",
-						dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]); 
+						dhmac[0], dhmac[1], dhmac[2], dhmac[3], dhmac[4], dhmac[5]);
 			}
 		}
 	}
@@ -841,7 +898,7 @@ int main(int argc, char *argv[])
 		}
 
 		int arp_icmp_rcv_state = 0;
-		while(arp_icmp_rcv_state != LISTEN_TIMOUET) { 
+		while(arp_icmp_rcv_state != LISTEN_TIMOUET) {
 			arp_icmp_rcv_state = recv_packet(ARP_ICMP_RCV);
 			/* Send ARP reply if ARP request received */
 			if(arp_icmp_rcv_state == ARP_RCVD) {
@@ -858,8 +915,8 @@ int main(int argc, char *argv[])
 				  fprintf(stdout, "Sending ICMP reply\n");
 				  }*/
 				build_packet(ICMP_SEND);
-				send_packet(ICMP_SEND);  
-			} 
+				send_packet(ICMP_SEND);
+			}
 		}
 
 		if(!json_flag) {

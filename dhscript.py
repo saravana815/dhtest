@@ -1,6 +1,21 @@
 #!/usr/bin/env python
 
-import commands
+import sys
+import os
+
+if sys.version_info.major <= 2:
+    from commands import getoutput
+else:
+    import subprocess
+
+    # subprocess.getoutput would not handle binary output
+    def getoutput(cmd):
+        try:
+            out = subprocess.run(cmd, text=False, shell=True,
+                                timeout=60, stdout=subprocess.PIPE)
+            return out.stdout
+        except subprocess.TimeoutExpired as e:
+            return b'ERROR: Timeout'
 
 #reset script log file
 with open('dhscript_log.txt', 'w') as f:
@@ -10,20 +25,19 @@ with open('dhscript_log.txt', 'w') as f:
 #print_log(- prints the output to both stdout and file
 def print_log(msg, cmd=None):
     if cmd != None:
-        print msg, cmd
         msg_full = msg + cmd + "\n"
     else:
-        print msg
         msg_full = msg + "\n"
 
+    sys.stdout.write(msg_full)
     with open('dhscript_log.txt', 'a') as f:
         f.write(msg_full)
         f.close
 
 #write_log - write the output to file
 def write_log(msg):
-    with open('dhscript_log.txt', 'a') as f:
-        msg_full = msg + "\n"
+    with open('dhscript_log.txt', 'ab') as f:
+        msg_full = msg + b"\n"
         f.write(msg_full)
         f.close
 
@@ -31,8 +45,10 @@ def run_dhtest(mac, arg_list, search_output):
     cmd = "./dhtest -i eth0 -m " + mac + arg_list
     print_log("=============================================================")
     print_log("Running command ", cmd)
-    out = commands.getoutput(cmd)
+    out = getoutput(cmd)
     write_log(out)
+    if isinstance(out, bytes):
+        search_output = search_output.encode('ascii')
     if out.find(search_output) != -1:
         print_log("PASS: command ", cmd)
     else:
@@ -86,7 +102,11 @@ run_dhtest(mac, ' -s', "DHCP ack received")
 run_dhtest(mac, ' -p', "DHCP ack received")
 run_dhtest(mac, ' -g 10.0.2.1', "DHCP ack received")
 run_dhtest(mac, ' -a', "Acquired IP")
-run_dhtest(mac, ' -S 10.0.2.2 ', "DHCP ack received")
 run_dhtest(mac, ' -c 60,str,"MSFT 5.0" -c 82,hex,0108476967302f312f30021130303a30303a30303a31313a31313a3131 ', "DHCP ack received")
 run_dhtest(mac, ' -D',  "DHCP decline sent")
+run_dhtest(mac, ' -l 011C030F060A0B111121314151617181192021222232425262728292a2b2c2d2e2',  "DHCP ack received")
+
+if os.getenv('DNSMASQ_TEST') is None:
+    # Skip test that always fail under dnsmasq test
+    run_dhtest(mac, ' -S 10.0.2.2 ', "DHCP ack received")
 
